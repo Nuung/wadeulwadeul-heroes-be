@@ -38,8 +38,8 @@ FastAPI backend application for wadeulwadeul-heroes project.
 │       ├── base/               # Base PostgreSQL manifests
 │       └── overlays/           # Production overlays
 ├── k8s/
-│   ├── DEPLOYMENT.md           # 상세 배포 가이드
-│   ├── README.md               # Kubernetes 개요
+│   ├── DEPLOYMENT.md           # 배포 가이드 (Jenkins & 수동)
+│   ├── JENKINS.md              # Jenkins 설정 가이드
 │   └── backend/
 │       ├── namespace.yaml      # Namespace definition
 │       ├── backend.yaml        # Deployment & Service
@@ -48,15 +48,6 @@ FastAPI backend application for wadeulwadeul-heroes project.
 │       └── config/
 │           ├── configmap.yaml  # ConfigMap for environment variables
 │           └── secret.yaml     # Secret for sensitive data
-├── scripts/
-│   ├── setup-aws.sh           # AWS CLI configuration
-│   ├── build-and-push.sh      # Build and push to ECR
-│   ├── deploy-backend.sh      # Deploy backend to EKS
-│   ├── rollback-backend.sh    # Rollback deployment
-│   ├── check-status.sh        # Check deployment status
-│   ├── deploy-postgres.sh     # Deploy PostgreSQL to EKS
-│   ├── test-postgres.sh       # Test PostgreSQL connection
-│   └── update-config.sh       # Update ConfigMap
 ├── Dockerfile
 ├── .dockerignore
 ├── Jenkinsfile                # Jenkins CI/CD pipeline
@@ -139,16 +130,6 @@ EOF
 uv run uvicorn app.main:app --reload
 ```
 
-### Deploy to EKS
-
-```bash
-# Deploy PostgreSQL
-./scripts/deploy-postgres.sh
-
-# Test connection
-./scripts/test-postgres.sh
-```
-
 For detailed PostgreSQL setup and management, see [database/README.md](database/README.md)
 
 ## Docker
@@ -194,24 +175,37 @@ This project includes complete Kubernetes manifests for deploying to AWS EKS wit
    ```bash
    # AWS CLI 설정
    aws configure
+
+   # EKS 클러스터 kubeconfig 업데이트
+   aws eks update-kubeconfig --region ap-northeast-2 --name goormthon-cluster
    ```
 
 2. **Build and push Docker image to ECR:**
    ```bash
-   # latest 태그로 빌드
-   ./scripts/build-and-push.sh
+   # Build image
+   docker build -t goormthon-5:latest .
 
-   # 특정 태그로 빌드
-   ./scripts/build-and-push.sh v1.0.0
+   # Tag for ECR
+   docker tag goormthon-5:latest 837126493345.dkr.ecr.ap-northeast-2.amazonaws.com/goormthon-5:latest
+
+   # Login to ECR
+   aws ecr get-login-password --region ap-northeast-2 | \
+       docker login --username AWS --password-stdin 837126493345.dkr.ecr.ap-northeast-2.amazonaws.com
+
+   # Push image
+   docker push 837126493345.dkr.ecr.ap-northeast-2.amazonaws.com/goormthon-5:latest
    ```
 
 3. **Deploy to EKS:**
    ```bash
-   # 기본 배포 (latest, 2 replicas)
-   ./scripts/deploy-backend.sh
+   # Create namespace (if not exists)
+   kubectl create namespace goormthon-5
 
-   # 특정 버전으로 배포
-   ./scripts/deploy-backend.sh --tag v1.0.0 --replicas 3
+   # Deploy using Kustomize
+   kubectl apply -k k8s/backend/
+
+   # Check deployment status
+   kubectl rollout status deployment/backend-deployment -n goormthon-5
    ```
 
 ### Deployment Details
@@ -221,19 +215,6 @@ This project includes complete Kubernetes manifests for deploying to AWS EKS wit
 - **Image Name**: `goormthon-5`
 - **Ingress**: `http://goormthon-5.goorm.training/api/`
 - **CI/CD**: Jenkins (Parameterized Build)
-
-### Useful Scripts
-
-```bash
-# 배포 상태 확인
-./scripts/check-status.sh
-
-# 롤백
-./scripts/rollback-backend.sh
-
-# 특정 버전으로 롤백
-./scripts/rollback-backend.sh 3
-```
 
 ### Useful Kubectl Commands
 

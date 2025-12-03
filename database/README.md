@@ -39,10 +39,7 @@ database/postgres/
 ### 1. Deploy PostgreSQL
 
 ```bash
-# Deploy using the script
-./scripts/deploy-postgres.sh
-
-# Or deploy manually
+# Deploy using Kustomize
 kubectl apply -k database/postgres/overlays/
 ```
 
@@ -65,10 +62,7 @@ kubectl get svc postgres -n goormthon-5
 ### 3. Test Connection
 
 ```bash
-# Run test script
-./scripts/test-postgres.sh
-
-# Or test manually
+# Test connection
 kubectl exec -it postgres-0 -n goormthon-5 -- psql -U postgres -d wadeulwadeul_db -c "\l"
 ```
 

@@ -136,11 +136,18 @@ Jenkins를 사용하지 않고 수동으로 배포할 수도 있습니다.
 ### 1. Docker 이미지 빌드 & 푸시
 
 ```bash
-# 이미지 빌드 및 ECR 푸시
-./scripts/build-and-push.sh v1.0.0
+# Build image
+docker build -t goormthon-5:v1.0.0 .
 
-# 또는 latest 태그로
-./scripts/build-and-push.sh
+# Tag for ECR
+docker tag goormthon-5:v1.0.0 837126493345.dkr.ecr.ap-northeast-2.amazonaws.com/goormthon-5:v1.0.0
+
+# Login to ECR
+aws ecr get-login-password --region ap-northeast-2 | \
+    docker login --username AWS --password-stdin 837126493345.dkr.ecr.ap-northeast-2.amazonaws.com
+
+# Push image
+docker push 837126493345.dkr.ecr.ap-northeast-2.amazonaws.com/goormthon-5:v1.0.0
 ```
 
 ### 2. ConfigMap & Secret 배포 (최초 1회)
@@ -156,14 +163,19 @@ kubectl apply -f k8s/backend/config/secret.yaml
 ### 3. Backend 배포
 
 ```bash
-# 기본 배포 (latest 태그, 2 replicas)
-./scripts/deploy-backend.sh
+# Deploy backend deployment and service
+kubectl apply -f k8s/backend/backend.yaml
 
-# 특정 태그와 replicas로 배포
-./scripts/deploy-backend.sh --tag v1.0.0 --replicas 3 --namespace goormthon-5
+# Update image tag
+kubectl set image deployment/backend-deployment \
+    backend=837126493345.dkr.ecr.ap-northeast-2.amazonaws.com/goormthon-5:v1.0.0 \
+    -n goormthon-5
 
-# 또는 환경변수로
-IMAGE_TAG=v1.0.0 REPLICAS=3 ./scripts/deploy-backend.sh
+# Scale replicas
+kubectl scale deployment/backend-deployment --replicas=3 -n goormthon-5
+
+# Wait for rollout
+kubectl rollout status deployment/backend-deployment -n goormthon-5
 ```
 
 ### 4. Ingress 배포 (최초 1회)
@@ -176,13 +188,7 @@ kubectl apply -f k8s/backend/ingress.yaml
 
 ## 배포 확인
 
-### 1. 스크립트를 통한 확인
-
-```bash
-./scripts/check-status.sh
-```
-
-### 2. 수동 확인
+### 1. 배포 상태 확인
 
 ```bash
 # Deployment 확인
@@ -204,7 +210,7 @@ kubectl logs -l app=backend --tail=50
 kubectl logs -l app=backend -f
 ```
 
-### 3. 헬스 체크
+### 2. 헬스 체크
 
 ```bash
 # Port-forward를 통한 로컬 테스트
@@ -215,7 +221,7 @@ curl http://localhost:8080/health/ping
 curl http://localhost:8080/
 ```
 
-### 4. Ingress를 통한 외부 접근
+### 3. Ingress를 통한 외부 접근
 
 ```bash
 # Ingress URL 확인
@@ -241,23 +247,24 @@ curl http://goormthon-5.goorm.training/api/
 #### 1. 이전 버전으로 롤백
 
 ```bash
-./scripts/rollback-backend.sh
+# 바로 이전 버전으로 롤백
+kubectl rollout undo deployment/backend-deployment -n goormthon-5
 
-# 또는 kubectl 직접 사용
-kubectl rollout undo deployment/backend-deployment
+# 롤백 상태 확인
+kubectl rollout status deployment/backend-deployment -n goormthon-5
 ```
 
 #### 2. 특정 버전으로 롤백
 
 ```bash
 # 배포 히스토리 확인
-kubectl rollout history deployment/backend-deployment
+kubectl rollout history deployment/backend-deployment -n goormthon-5
 
 # 특정 revision으로 롤백
-./scripts/rollback-backend.sh 3
+kubectl rollout undo deployment/backend-deployment --to-revision=3 -n goormthon-5
 
-# 또는 kubectl 직접 사용
-kubectl rollout undo deployment/backend-deployment --to-revision=3
+# 롤백 상태 확인
+kubectl rollout status deployment/backend-deployment -n goormthon-5
 ```
 
 #### 3. 롤백 상태 확인
