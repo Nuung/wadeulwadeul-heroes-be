@@ -24,14 +24,17 @@ FastAPI backend application for wadeulwadeul-heroes project.
 │   │   └── routes/
 │   │       ├── __init__.py
 │   │       ├── health.py       # Health check endpoints
-│   │       └── heroes.py       # Heroes CRUD endpoints
+│   │       ├── heroes.py       # Heroes CRUD endpoints
+│   │       └── users.py        # Users CRUD endpoints
 │   ├── core/
 │   │   ├── __init__.py
 │   │   ├── config.py           # Application configuration
-│   │   └── database.py         # Database session management
+│   │   ├── database.py         # Database session management
+│   │   └── auth.py             # Authentication middleware & dependencies
 │   └── models/
 │       ├── __init__.py
-│       └── hero.py             # Hero database model
+│       ├── hero.py             # Hero database model
+│       └── user.py             # User database model
 ├── database/
 │   ├── README.md               # Database deployment guide
 │   └── postgres/
@@ -82,6 +85,46 @@ The API will be available at `http://localhost:8000`
 Once the server is running, visit:
 - Swagger UI: `http://localhost:8000/docs`
 - ReDoc: `http://localhost:8000/redoc`
+- OpenAPI Schema: `http://localhost:8000/openapi.json`
+
+**Production:**
+- Swagger UI: `http://goormthon-5.goorm.training/api/docs`
+- ReDoc: `http://goormthon-5.goorm.training/api/redoc`
+
+API documentation is enabled by default in all environments. You can disable it by setting `ENABLE_DOCS=false` in your environment variables.
+
+### Authentication (Hackathon Mode)
+
+This project uses a simple header-based authentication for hackathon purposes:
+
+**Header:** `wadeulwadeul-user`
+**Value:** User's email address
+
+The middleware automatically loads the user from the database based on the email provided in the header.
+
+**Usage Example:**
+```bash
+# Create a user first
+curl -X POST http://localhost:8000/api/v1/users \
+  -H "Content-Type: application/json" \
+  -d '{"name": "John Doe", "email": "john@example.com"}'
+
+# Access authenticated endpoint
+curl http://localhost:8000/api/v1/users/me \
+  -H "wadeulwadeul-user: john@example.com"
+```
+
+**For Developers:**
+- Use `get_current_user` dependency for required authentication (returns 401 if not authenticated)
+- Use `get_current_user_optional` dependency for optional authentication (returns None if not authenticated)
+
+```python
+from app.core.auth import get_current_user
+
+@router.get("/protected")
+async def protected_endpoint(user: User = Depends(get_current_user)):
+    return {"message": f"Hello, {user.name}!"}
+```
 
 ### Available Endpoints
 
@@ -94,6 +137,14 @@ Once the server is running, visit:
 - `GET /api/v1/heroes/{id}` - Get hero by ID
 - `POST /api/v1/heroes` - Create new hero
 - `DELETE /api/v1/heroes/{id}` - Delete hero
+
+**Users API:**
+- `GET /api/v1/users/me` - Get current authenticated user (requires auth)
+- `GET /api/v1/users` - List all users
+- `GET /api/v1/users/{id}` - Get user by ID
+- `POST /api/v1/users` - Create new user
+- `PUT /api/v1/users/{id}` - Update user
+- `DELETE /api/v1/users/{id}` - Delete user
 
 ## PostgreSQL Database
 
@@ -270,9 +321,23 @@ uv run ruff check app/ --fix && uv run ruff format app/
 
 Create a `.env` file in the root directory:
 ```env
+# Application Configuration
 APP_NAME=Wadeulwadeul Heroes API
 APP_VERSION=0.1.0
 DEBUG=false
+
+# API Documentation (enabled by default)
+ENABLE_DOCS=true
+DOCS_URL=/docs
+REDOC_URL=/redoc
+OPENAPI_URL=/openapi.json
+
+# Database Configuration
+DB_HOST=localhost
+DB_PORT=5432
+DB_USER=postgres
+DB_PASSWORD=postgres123
+DB_NAME=wadeulwadeul_db
 ```
 
 ## References
