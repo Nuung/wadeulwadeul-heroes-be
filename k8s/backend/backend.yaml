@@ -35,8 +35,8 @@ spec:
         envFrom:
         - configMapRef:
             name: backend-config
-        - secretRef:
-            name: backend-secret
+        # - secretRef:
+        #     name: backend-secret
         resources:
           requests:
             memory: "256Mi"
