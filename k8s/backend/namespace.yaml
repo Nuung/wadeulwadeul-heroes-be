@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: goormthon-5
+  labels:
+    name: goormthon-5
+    team: goormthon-5
