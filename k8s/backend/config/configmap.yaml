@@ -17,6 +17,7 @@ data:
   DOCS_URL: "/docs"
   REDOC_URL: "/redoc"
   OPENAPI_URL: "/openapi.json"
+  ROOT_PATH: "/api"
 
   # Database settings
   DB_HOST: "postgres.goormthon-5.svc.cluster.local"

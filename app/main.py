@@ -14,6 +14,7 @@ app = FastAPI(
     docs_url=settings.docs_url if settings.enable_docs else None,
     redoc_url=settings.redoc_url if settings.enable_docs else None,
     openapi_url=settings.openapi_url if settings.enable_docs else None,
+    root_path=settings.root_path,
 )
 
 # CORS middleware configuration

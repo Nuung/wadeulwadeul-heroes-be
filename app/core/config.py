@@ -18,6 +18,9 @@ class Settings(BaseSettings):
     redoc_url: str = "/redoc"
     openapi_url: str = "/openapi.json"
 
+    # Root path for reverse proxy (e.g., "/api" for production behind Ingress)
+    root_path: str = ""
+
     # Database settings
     db_host: str = "postgres.goormthon-5.svc.cluster.local"
     db_port: int = 5432
