@@ -10,7 +10,7 @@ resources:
 configMapGenerator:
 - name: backend-config
   files:
-  - config/backend-config.json
+  - config/.env
 
 commonLabels:
   app: backend
