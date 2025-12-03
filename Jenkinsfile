@@ -120,26 +120,77 @@ pipeline {
                 script {
                     echo "Starting deployment..."
 
-                    // 이미지 태그 업데이트
+                    // 리소스 존재 여부 확인 및 배포
+                    def deploymentExists = sh(
+                        script: "kubectl get deployment backend-deployment -n ${params.NAMESPACE} 2>/dev/null",
+                        returnStatus: true
+                    ) == 0
+
+                    if (!deploymentExists) {
+                        echo "Initial deployment - Creating all resources..."
+
+                        // ConfigMap과 Secret 생성
+                        sh """
+                            kubectl apply -f k8s/backend/config/configmap.yaml
+                            kubectl apply -f k8s/backend/config/secret.yaml
+                        """
+
+                        // Backend deployment와 service 생성
+                        sh """
+                            kubectl apply -f k8s/backend/backend.yaml
+                        """
+
+                        // Ingress 생성
+                        sh """
+                            kubectl apply -f k8s/backend/ingress.yaml
+                        """
+
+                        // 이미지 태그 설정 (latest가 아닌 경우)
+                        if (params.IMAGE_TAG != 'latest') {
+                            sh """
+                                kubectl set image deployment/backend-deployment \
+                                    backend=${env.ECR_REGISTRY}/${env.IMAGE_NAME}:${params.IMAGE_TAG} \
+                                    -n ${params.NAMESPACE}
+                            """
+                        }
+
+                        // Replicas 수 설정 (2가 아닌 경우)
+                        if (params.REPLICAS != '2') {
+                            sh """
+                                kubectl scale deployment/backend-deployment \
+                                    --replicas=${params.REPLICAS} \
+                                    -n ${params.NAMESPACE}
+                            """
+                        }
+
+                        echo "Initial deployment completed"
+                    } else {
+                        echo "Updating existing deployment..."
+
+                        // 이미지 태그 업데이트
+                        sh """
+                            kubectl set image deployment/backend-deployment \
+                                backend=${env.ECR_REGISTRY}/${env.IMAGE_NAME}:${params.IMAGE_TAG} \
+                                -n ${params.NAMESPACE}
+                        """
+
+                        // Replicas 수 업데이트
+                        sh """
+                            kubectl scale deployment/backend-deployment \
+                                --replicas=${params.REPLICAS} \
+                                -n ${params.NAMESPACE}
+                        """
+
+                        echo "Deployment updated successfully"
+                    }
+
+                    // Change cause 어노테이션 업데이트
                     sh """
-                        # Deployment 이미지 업데이트
-                        kubectl set image deployment/backend-deployment \
-                            backend=${env.ECR_REGISTRY}/${env.IMAGE_NAME}:${params.IMAGE_TAG} \
-                            -n ${params.NAMESPACE}
-
-                        # Replicas 수 업데이트
-                        kubectl scale deployment/backend-deployment \
-                            --replicas=${params.REPLICAS} \
-                            -n ${params.NAMESPACE}
-
-                        # Change cause 어노테이션 업데이트
                         kubectl annotate deployment/backend-deployment \
                             kubernetes.io/change-cause="Jenkins deployment - Image: ${params.IMAGE_TAG}, Replicas: ${params.REPLICAS}, Build: ${BUILD_NUMBER}" \
                             -n ${params.NAMESPACE} \
                             --overwrite
                     """
-
-                    echo "Deployment updated successfully"
                 }
             }
         }
