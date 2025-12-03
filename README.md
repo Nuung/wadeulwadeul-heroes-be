@@ -93,7 +93,7 @@ Once the server is running, visit:
 
 API documentation is enabled by default in all environments. You can disable it by setting `ENABLE_DOCS=false` in your environment variables.
 
-**Important:** For production deployment behind reverse proxy (Ingress), set `ROOT_PATH=/api` to ensure correct path routing for API docs and OpenAPI schema.
+**Important:** Production uses `OPENAPI_URL=/api/openapi.json` in ConfigMap to match the Ingress path routing.
 
 ### Authentication (Hackathon Mode)
 
@@ -333,7 +333,6 @@ ENABLE_DOCS=true
 DOCS_URL=/docs
 REDOC_URL=/redoc
 OPENAPI_URL=/openapi.json
-ROOT_PATH=  # Empty for local, "/api" for production behind Ingress
 
 # Database Configuration
 DB_HOST=localhost
