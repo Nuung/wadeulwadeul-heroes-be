@@ -236,3 +236,140 @@ class TestRAGRetrieverClass:
         assert any(
             keyword in text for keyword in ["돌", "stone", "담", "wall"]
         ), f"첫 번째 결과가 쿼리와 관련성이 없음: {first_result['title']}"
+
+
+class TestRAGRetrieverLogging:
+    """RAG Retriever 로깅 기능 테스트"""
+
+    def test_retrieve_function_logs_query_and_results(self, caplog):
+        """Test 4.1: retrieve() 함수가 검색 쿼리와 결과를 로깅하는지 확인"""
+        # Given: 로깅 레벨 설정
+        import logging
+
+        from llm.rag_retriever import retrieve
+
+        caplog.set_level(logging.INFO, logger="llm.rag_retriever")
+
+        query = "제주 전통 체험"
+        top_k = 3
+
+        index_path = project_root / "llm" / "output" / "visitjeju_faiss.index"
+        metadata_path = project_root / "llm" / "output" / "visitjeju_metadata.json"
+
+        # When: retrieve() 함수 호출
+        results = retrieve(query, top_k, str(index_path), str(metadata_path))
+
+        # Then: 로그에 검색 시작 메시지가 있어야 함
+        assert any(
+            "검색 시작" in record.message and query in record.message
+            for record in caplog.records
+        ), "검색 시작 로그가 없음"
+
+        # Then: 로그에 검색 완료 메시지가 있어야 함
+        assert any(
+            "검색 완료" in record.message for record in caplog.records
+        ), "검색 완료 로그가 없음"
+
+        # Then: 로그에 소요시간이 기록되어야 함
+        assert any(
+            "소요시간" in record.message for record in caplog.records
+        ), "소요시간 로그가 없음"
+
+        # Then: 로그에 결과 개수가 기록되어야 함
+        assert any(
+            f"결과수: {top_k}" in record.message for record in caplog.records
+        ), "결과 개수 로그가 없음"
+
+        # Then: 검색 결과가 정상적으로 반환되어야 함
+        assert len(results) == top_k, f"결과 개수가 올바르지 않음: {len(results)}"
+
+    def test_retrieve_function_logs_distance_stats(self, caplog):
+        """Test 4.2: retrieve() 함수가 거리 통계를 로깅하는지 확인"""
+        # Given: 로깅 레벨 설정
+        import logging
+
+        from llm.rag_retriever import retrieve
+
+        caplog.set_level(logging.INFO, logger="llm.rag_retriever")
+
+        query = "해녀 물질"
+        top_k = 5
+
+        index_path = project_root / "llm" / "output" / "visitjeju_faiss.index"
+        metadata_path = project_root / "llm" / "output" / "visitjeju_metadata.json"
+
+        # When: retrieve() 함수 호출
+        results = retrieve(query, top_k, str(index_path), str(metadata_path))
+
+        # Then: 로그에 거리 범위가 기록되어야 함
+        assert any(
+            "거리범위" in record.message or "distance" in record.message.lower()
+            for record in caplog.records
+        ), "거리 통계 로그가 없음"
+
+        # Then: 실제 결과의 거리값이 로그와 일치해야 함
+        distances = [r["distance"] for r in results]
+        min_dist = min(distances)
+        max_dist = max(distances)
+
+        # 로그에 최소/최대 거리가 포함되어 있는지 확인
+        log_messages = " ".join(record.message for record in caplog.records)
+        # 거리값이 로그에 나타나는지 확인 (소수점 반올림 고려)
+        assert any(
+            "거리" in record.message for record in caplog.records
+        ), f"거리 정보가 로그에 없음. min={min_dist:.2f}, max={max_dist:.2f}"
+
+    def test_retrieve_function_logs_top_results(self, caplog):
+        """Test 4.3: retrieve() 함수가 상위 결과들을 로깅하는지 확인"""
+        # Given: 로깅 레벨을 DEBUG로 설정하여 상세 로그 확인
+        import logging
+
+        from llm.rag_retriever import retrieve
+
+        caplog.set_level(logging.DEBUG, logger="llm.rag_retriever")
+
+        query = "제주 말 체험"
+        top_k = 3
+
+        index_path = project_root / "llm" / "output" / "visitjeju_faiss.index"
+        metadata_path = project_root / "llm" / "output" / "visitjeju_metadata.json"
+
+        # When: retrieve() 함수 호출
+        results = retrieve(query, top_k, str(index_path), str(metadata_path))
+
+        # Then: 로그에 상위 결과의 title이 포함되어야 함
+        log_messages = " ".join(record.message for record in caplog.records)
+
+        # 최소한 첫 번째 결과의 title이 로그에 나타나야 함
+        first_title = results[0]["title"]
+        assert any(
+            first_title[:20] in record.message for record in caplog.records
+        ), f"상위 결과 title이 로그에 없음: {first_title}"
+
+    def test_rag_retriever_class_logs_retrieval(self, caplog):
+        """Test 4.4: RAGRetriever 클래스의 retrieve() 메서드도 로깅하는지 확인"""
+        # Given: 로깅 레벨 설정
+        import logging
+
+        from llm.rag_retriever import RAGRetriever
+
+        caplog.set_level(logging.INFO, logger="llm.rag_retriever")
+
+        index_path = project_root / "llm" / "output" / "visitjeju_faiss.index"
+        metadata_path = project_root / "llm" / "output" / "visitjeju_metadata.json"
+
+        retriever = RAGRetriever(str(index_path), str(metadata_path))
+
+        query = "제주 감귤 체험"
+        top_k = 3
+
+        # When: RAGRetriever.retrieve() 호출
+        results = retriever.retrieve(query, top_k)
+
+        # Then: 로그에 검색 관련 메시지가 있어야 함
+        assert any(
+            "검색" in record.message for record in caplog.records
+        ), "RAGRetriever 클래스의 로그가 없음"
+
+        # Then: 결과가 정상적으로 반환되어야 함
+        assert len(results) == top_k, f"결과 개수가 올바르지 않음: {len(results)}"

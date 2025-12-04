@@ -5,7 +5,9 @@ FAISS 인덱스를 사용하여 유사한 문서를 검색하는 기능을 제�
 
 import contextlib
 import json
+import logging
 import os
+import time
 from pathlib import Path
 from typing import Any
 
@@ -14,6 +16,8 @@ import numpy as np
 from openai import OpenAI
 
 from llm import config
+
+logger = logging.getLogger(__name__)
 
 client: OpenAI | None = None  # lazy init
 
@@ -191,6 +195,9 @@ def retrieve(
     Returns:
         검색 결과 리스트. 각 결과는 distance, title, introduction, alltag, address 포함
     """
+    start_time = time.time()
+    logger.info(f"검색 시작 - 쿼리: '{query}', top_k: {top_k}")
+
     _warmup_cache_if_needed()
 
     # 기본 경로 설정
@@ -214,6 +221,22 @@ def retrieve(
 
     # 5. 검색 결과 포매팅
     results = format_results(distances, indices, metadata["items"])
+
+    # 로깅: 검색 완료 및 통계
+    elapsed = time.time() - start_time
+    distances_list = [r["distance"] for r in results]
+    logger.info(
+        f"검색 완료 - 소요시간: {elapsed:.3f}s, "
+        f"결과수: {len(results)}, "
+        f"거리범위: [{min(distances_list):.3f}, {max(distances_list):.3f}]"
+    )
+
+    # 로깅: 상위 결과 (DEBUG 레벨)
+    for i, result in enumerate(results[:3]):
+        logger.debug(
+            f"  [{i+1}] distance={result['distance']:.3f}, "
+            f"title='{result['title'][:50]}'"
+        )
 
     return results
 
@@ -254,6 +277,9 @@ class RAGRetriever:
         Returns:
             검색 결과 리스트. 각 결과는 distance, title, introduction, alltag, address 포함
         """
+        start_time = time.time()
+        logger.info(f"검색 시작 - 쿼리: '{query}', top_k: {top_k}")
+
         # 1. 쿼리를 임베딩으로 변환
         query_vector = embed_query(query)
 
@@ -262,5 +288,21 @@ class RAGRetriever:
 
         # 3. 검색 결과 포매팅
         results = format_results(distances, indices, self.items)
+
+        # 로깅: 검색 완료 및 통계
+        elapsed = time.time() - start_time
+        distances_list = [r["distance"] for r in results]
+        logger.info(
+            f"검색 완료 - 소요시간: {elapsed:.3f}s, "
+            f"결과수: {len(results)}, "
+            f"거리범위: [{min(distances_list):.3f}, {max(distances_list):.3f}]"
+        )
+
+        # 로깅: 상위 결과 (DEBUG 레벨)
+        for i, result in enumerate(results[:3]):
+            logger.debug(
+                f"  [{i+1}] distance={result['distance']:.3f}, "
+                f"title='{result['title'][:50]}'"
+            )
 
         return results
