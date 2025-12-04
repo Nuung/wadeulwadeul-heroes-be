@@ -45,10 +45,10 @@ CREATE TABLE IF NOT EXISTS app.classes (
     duration_minutes INT NOT NULL,
     capacity INT NOT NULL,
     years_of_experience VARCHAR(50) NOT NULL,
-    job_description VARCHAR(255) NOT NULL,
+    job_description TEXT NOT NULL,
     materials TEXT NOT NULL,
     price_per_person VARCHAR(50) NOT NULL,
-    template TEXT,
+    template JSONB,
     created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );

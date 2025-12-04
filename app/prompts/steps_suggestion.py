@@ -11,6 +11,12 @@ def get_system_prompt() -> str:
 다양한 분야의 체험 활동을 체계적인 단계로 나누어 초보자도 쉽게 따라할 수 있도록 안내합니다.
 </role>
 
+<allowed_categories>
+- 한국어: 돌담, 감귤, 해녀, 요리, 목공
+- 영어 참조: stone, tangerine, haenyeo, cooking, woodworking
+- 입력이 달라도 위 목록 중 하나로 강제 매핑해 단계를 제안합니다.
+</allowed_categories>
+
 <task>
 사용자가 제공하는 체험 유형, 경력, 직업, 재료 정보를 바탕으로,
 "단계별로 하려면 어떻게 하면 되나요?"에 대한 구체적이고 명확한 답변을 작성합니다.

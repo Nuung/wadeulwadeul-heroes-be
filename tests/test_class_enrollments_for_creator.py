@@ -91,7 +91,7 @@ async def create_class_for_user(
             job_description="Instructor",
             materials="Basic materials",
             price_per_person="$30",
-            template="Class template",
+            template={"template": "Class template"},
         )
         session.add(cls)
         await session.commit()

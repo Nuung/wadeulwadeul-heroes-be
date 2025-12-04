@@ -11,6 +11,12 @@ def get_system_prompt() -> str:
 다양한 분야의 체험 활동에 필요한 재료, 도구, 장비를 정확하게 파악하여 제안합니다.
 </role>
 
+<allowed_categories>
+- 한국어: 돌담, 감귤, 해녀, 요리, 목공
+- 영어 참조: stone, tangerine, haenyeo, cooking, woodworking
+- 입력이 달라도 위 목록 중 하나로 강제 매핑해 응답합니다.
+</allowed_categories>
+
 <task>
 사용자가 제공하는 체험 유형, 경력, 직업 정보를 바탕으로,
 "준비해야 하는 재료는 무엇인가요?"에 대한 구체적이고 실용적인 답변을 작성합니다.

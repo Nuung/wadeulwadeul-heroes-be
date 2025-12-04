@@ -1,5 +1,6 @@
 """One-day class CRUD endpoints."""
 
+from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -27,7 +28,7 @@ class ClassBase(BaseModel):
     job_description: str
     materials: str
     price_per_person: str
-    template: str | None = None
+    template: dict[str, Any] | None = None
 
 
 class ClassCreate(ClassBase):
@@ -221,7 +222,7 @@ class ClassUpdate(BaseModel):
     job_description: str | None = None
     materials: str | None = None
     price_per_person: str | None = None
-    template: str | None = None
+    template: dict[str, Any] | None = None
 
 
 @router.put("/{class_id}", response_model=ClassResponse)
@@ -336,7 +337,7 @@ class ClassInfoResponse(BaseModel):
     job_description: str
     materials: str
     price_per_person: str
-    template: str | None
+    template: dict[str, Any] | None
 
 
 class ClassEnrollmentResponse(BaseModel):

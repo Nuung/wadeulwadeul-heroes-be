@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, status
+import json
+from json import JSONDecodeError
+from typing import Any
+
+from fastapi import APIRouter, Depends, HTTPException, status
 from openai import AsyncOpenAI
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -33,7 +37,7 @@ class ExperienceRequest(BaseModel):
 class ExperienceResponse(BaseModel):
     """Response for experience plan generation."""
 
-    template: str = Field(..., description="체험 클래스 전체 템플릿")
+    template: dict[str, Any] = Field(..., description="체험 클래스 전체 템플릿(JSON)")
 
 
 @router.post("/", status_code=status.HTTP_200_OK)
@@ -81,7 +85,15 @@ async def generate_experience_plan(
         temperature=0,
     )
 
-    template = completion.choices[0].message.content
+    template_raw = completion.choices[0].message.content
+
+    try:
+        template = json.loads(template_raw)
+    except JSONDecodeError as exc:  # pragma: no cover - defensive guard
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="LLM 응답을 JSON으로 파싱할 수 없습니다",
+        ) from exc
 
     return ExperienceResponse(template=template)
 

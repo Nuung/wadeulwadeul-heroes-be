@@ -86,7 +86,7 @@ async def test_only_old_user_can_create_class(client: AsyncClient, session_maker
         "job_description": "Cooking expert",
         "materials": "Apron, pan",
         "price_per_person": "$30",
-        "template": "Cooking class template",
+        "template": {"template": "Cooking class template"},
     }
 
     # Young 사용자: 권한 없음
@@ -143,7 +143,7 @@ async def test_create_class_persists_and_returned(client: AsyncClient, session_m
         "job_description": "Professional guitarist",
         "materials": "Guitar strings, picks",
         "price_per_person": "$50",
-        "template": "Full class template content",
+        "template": {"template": "Full class template content"},
     }
 
     res = await client.post(
@@ -242,7 +242,7 @@ async def test_list_classes(client: AsyncClient, session_maker):
             "job_description": "Chef",
             "materials": "Knife",
             "price_per_person": "$25",
-            "template": "Cooking outline",
+            "template": {"template": "Cooking outline"},
         },
     ]
 
@@ -327,7 +327,7 @@ async def test_update_class_by_creator(client: AsyncClient, session_maker):
         "category": "dance-updated",
         "capacity": 7,
         "materials": "Shoes, water",
-        "template": "Updated template",
+        "template": {"template": "Updated template"},
     }
 
     # Young 사용자: 수정 불가
@@ -349,7 +349,7 @@ async def test_update_class_by_creator(client: AsyncClient, session_maker):
     assert data["category"] == "dance-updated"
     assert data["capacity"] == 7
     assert data["materials"] == "Shoes, water"
-    assert data["template"] == "Updated template"
+    assert data["template"] == {"template": "Updated template"}
 
 
 @pytest.mark.anyio
@@ -366,7 +366,7 @@ async def test_delete_class_by_creator(client: AsyncClient, session_maker):
         "job_description": "Crafter",
         "materials": "Wood, glue",
         "price_per_person": "$40",
-        "template": "Craft template",
+        "template": {"template": "Craft template"},
     }
 
     create_res = await client.post(
