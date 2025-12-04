@@ -90,9 +90,10 @@ def build_user_prompt(
     years_of_experience: str,
     job_description: str,
     materials: str,
+    rag_context: str | None = None,
 ) -> str:
     """Build user prompt with provided information."""
-    return f"""
+    base_prompt = f"""
 다음 정보를 바탕으로 체험 진행 단계를 제안해 주세요:
 
 <experience_info>
@@ -105,3 +106,14 @@ def build_user_prompt(
 "단계별로 하려면 어떻게 하면 되나요?"에 대한 구체적이고 명확한 답변을 작성해 주세요.
 각 단계를 "첫째, 둘째, 셋째..." 형식으로 순서대로 제안해 주세요.
 """.strip()
+
+    if rag_context:
+        reference = f"""
+
+<reference_context>
+{rag_context}
+</reference_context>
+""".strip()
+        return f"{base_prompt}\n\n{reference}"
+
+    return base_prompt

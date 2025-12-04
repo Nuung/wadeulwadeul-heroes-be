@@ -80,10 +80,13 @@ def get_system_prompt() -> str:
 
 
 def build_user_prompt(
-    category: str, years_of_experience: str, job_description: str
+    category: str,
+    years_of_experience: str,
+    job_description: str,
+    rag_context: str | None = None,
 ) -> str:
     """Build user prompt with provided information."""
-    return f"""
+    base_prompt = f"""
 다음 정보를 바탕으로 체험에 필요한 재료와 준비물을 제안해 주세요:
 
 <experience_info>
@@ -94,3 +97,14 @@ def build_user_prompt(
 
 "준비해야 하는 재료는 무엇인가요?"에 대한 구체적이고 실용적인 답변을 작성해 주세요.
 """.strip()
+
+    if rag_context:
+        reference = f"""
+
+<reference_context>
+{rag_context}
+</reference_context>
+""".strip()
+        return f"{base_prompt}\n\n{reference}"
+
+    return base_prompt

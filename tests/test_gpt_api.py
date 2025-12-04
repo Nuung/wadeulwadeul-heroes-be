@@ -4,6 +4,7 @@ from typing import Any
 import pytest
 from httpx import ASGITransport, AsyncClient
 
+from app.api.routes import experience_plan as experience_plan_api
 from app.libs import openai_client
 from app.main import app
 
@@ -41,6 +42,27 @@ class _FakeOpenAIClient:
     def __init__(self, content: str):
         self.store: dict[str, Any] = {"response_content": content}
         self.chat = _FakeChat(self.store)
+
+
+class _StubRAGRetriever:
+    def __init__(self, context: str, raise_error: bool = False):
+        self.context = context
+        self.raise_error = raise_error
+        self.called_queries: list[str] = []
+
+    def retrieve(self, query: str, top_k: int = 3):
+        self.called_queries.append(query)
+        self.last_top_k = top_k
+        if self.raise_error:
+            raise RuntimeError("rag failure")
+        return [
+            {
+                "title": self.context or "워크숍 A",
+                "introduction": "소개 A",
+                "alltag": "tagA",
+                "address": "주소 A",
+            }
+        ]
 
 
 @pytest.fixture
@@ -228,3 +250,251 @@ async def test_steps_suggestion_uses_correct_prompts(steps_client):
     assert payload["job_description"] in user_message
     assert payload["materials"] in user_message
     assert fake_client.store["model"] == "gpt-4o"
+
+
+@pytest.mark.anyio
+async def test_materials_suggestion_uses_rag_context_when_available():
+    expected_suggestion = "dummy"
+    fake_client = _FakeOpenAIClient(expected_suggestion)
+    rag_context = "재료 컨텍스트 A"
+    stub_retriever = _StubRAGRetriever(context=rag_context)
+
+    async def _override_openai():
+        return fake_client
+
+    def _override_rag():
+        return stub_retriever
+
+    app.dependency_overrides[openai_client.get_openai_client] = _override_openai
+    app.dependency_overrides[experience_plan_api.get_rag_retriever] = _override_rag
+
+    payload = {
+        "category": "자연 및 야외활동",
+        "years_of_experience": "3",
+        "job_description": "해녀",
+    }
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(
+        transport=transport, base_url="http://test", follow_redirects=True
+    ) as ac:
+        res = await ac.post("/api/v1/experience-plan/materials-suggestion", json=payload)
+
+    app.dependency_overrides.clear()
+
+    assert res.status_code == 200
+    assert stub_retriever.called_queries
+    user_message = fake_client.store["messages"][1]["content"]
+    assert "<reference_context>" in user_message
+    assert rag_context in user_message
+
+
+@pytest.mark.anyio
+async def test_materials_suggestion_falls_back_when_rag_fails():
+    expected_suggestion = "dummy"
+    fake_client = _FakeOpenAIClient(expected_suggestion)
+    stub_retriever = _StubRAGRetriever(context="", raise_error=True)
+
+    async def _override_openai():
+        return fake_client
+
+    def _override_rag():
+        return stub_retriever
+
+    app.dependency_overrides[openai_client.get_openai_client] = _override_openai
+    app.dependency_overrides[experience_plan_api.get_rag_retriever] = _override_rag
+
+    payload = {
+        "category": "자연 및 야외활동",
+        "years_of_experience": "3",
+        "job_description": "해녀",
+    }
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(
+        transport=transport, base_url="http://test", follow_redirects=True
+    ) as ac:
+        res = await ac.post("/api/v1/experience-plan/materials-suggestion", json=payload)
+
+    app.dependency_overrides.clear()
+
+    assert res.status_code == 200
+    user_message = fake_client.store["messages"][1]["content"]
+    assert "<reference_context>" not in user_message
+
+
+@pytest.mark.anyio
+async def test_steps_suggestion_uses_rag_context_when_available():
+    expected_steps = "dummy"
+    fake_client = _FakeOpenAIClient(expected_steps)
+    rag_context = "단계 컨텍스트 A"
+    stub_retriever = _StubRAGRetriever(context=rag_context)
+
+    async def _override_openai():
+        return fake_client
+
+    def _override_rag():
+        return stub_retriever
+
+    app.dependency_overrides[openai_client.get_openai_client] = _override_openai
+    app.dependency_overrides[experience_plan_api.get_rag_retriever] = _override_rag
+
+    payload = {
+        "category": "자연 및 야외활동",
+        "years_of_experience": "3",
+        "job_description": "해녀",
+        "materials": "테왁",
+    }
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(
+        transport=transport, base_url="http://test", follow_redirects=True
+    ) as ac:
+        res = await ac.post("/api/v1/experience-plan/steps-suggestion", json=payload)
+
+    app.dependency_overrides.clear()
+
+    assert res.status_code == 200
+    assert stub_retriever.called_queries
+    user_message = fake_client.store["messages"][1]["content"]
+    assert "<reference_context>" in user_message
+    assert rag_context in user_message
+
+
+@pytest.mark.anyio
+async def test_steps_suggestion_falls_back_when_rag_fails():
+    expected_steps = "dummy"
+    fake_client = _FakeOpenAIClient(expected_steps)
+    stub_retriever = _StubRAGRetriever(context="", raise_error=True)
+
+    async def _override_openai():
+        return fake_client
+
+    def _override_rag():
+        return stub_retriever
+
+    app.dependency_overrides[openai_client.get_openai_client] = _override_openai
+    app.dependency_overrides[experience_plan_api.get_rag_retriever] = _override_rag
+
+    payload = {
+        "category": "자연 및 야외활동",
+        "years_of_experience": "3",
+        "job_description": "해녀",
+        "materials": "테왁",
+    }
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(
+        transport=transport, base_url="http://test", follow_redirects=True
+    ) as ac:
+        res = await ac.post("/api/v1/experience-plan/steps-suggestion", json=payload)
+
+    app.dependency_overrides.clear()
+
+    assert res.status_code == 200
+    user_message = fake_client.store["messages"][1]["content"]
+    assert "<reference_context>" not in user_message
+
+
+@pytest.mark.anyio
+async def test_generate_experience_plan_uses_rag_context_when_available():
+    expected_output = {
+        "체험 제목": "dummy",
+        "클래스 소개": "dummy",
+        "난이도": "dummy",
+        "로드맵": "dummy",
+        "오프닝": "dummy",
+        "준비 단계": "dummy",
+        "핵심 체험": "dummy",
+        "마무리": "dummy",
+        "준비물": "dummy",
+        "특별 안내사항": "dummy",
+    }
+    fake_client = _FakeOpenAIClient(json.dumps(expected_output))
+    rag_context = "워크숍 A | 소개 A | tagA | 주소 A"
+    stub_retriever = _StubRAGRetriever(context=rag_context)
+
+    async def _override_openai():
+        return fake_client
+
+    def _override_rag():
+        return stub_retriever
+
+    app.dependency_overrides[openai_client.get_openai_client] = _override_openai
+    app.dependency_overrides[experience_plan_api.get_rag_retriever] = _override_rag
+
+    payload = {
+        "category": "자연 및 야외활동",
+        "years_of_experience": "20",
+        "job_description": "제주도 돌담 장인",
+        "materials": "현무암 돌 (크기별 분류), 장갑, 돌망치, 수평계",
+        "location": "제주 마을 야외 작업장",
+        "duration_minutes": "60",
+        "capacity": "10",
+        "price_per_person": "50000",
+    }
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(
+        transport=transport, base_url="http://test", follow_redirects=True
+    ) as ac:
+        res = await ac.post("/api/v1/experience-plan", json=payload)
+
+    app.dependency_overrides.clear()
+
+    assert res.status_code == 200
+    assert stub_retriever.called_queries
+    messages = fake_client.store["messages"]
+    user_message = messages[1]["content"]
+    assert "<reference_context>" in user_message
+    assert rag_context in user_message
+
+
+@pytest.mark.anyio
+async def test_generate_experience_plan_falls_back_when_rag_fails():
+    expected_output = {
+        "체험 제목": "dummy",
+        "클래스 소개": "dummy",
+        "난이도": "dummy",
+        "로드맵": "dummy",
+        "오프닝": "dummy",
+        "준비 단계": "dummy",
+        "핵심 체험": "dummy",
+        "마무리": "dummy",
+        "준비물": "dummy",
+        "특별 안내사항": "dummy",
+    }
+    fake_client = _FakeOpenAIClient(json.dumps(expected_output))
+    stub_retriever = _StubRAGRetriever(context="", raise_error=True)
+
+    async def _override_openai():
+        return fake_client
+
+    def _override_rag():
+        return stub_retriever
+
+    app.dependency_overrides[openai_client.get_openai_client] = _override_openai
+    app.dependency_overrides[experience_plan_api.get_rag_retriever] = _override_rag
+
+    payload = {
+        "category": "자연 및 야외활동",
+        "years_of_experience": "20",
+        "job_description": "제주도 돌담 장인",
+        "materials": "현무암 돌 (크기별 분류), 장갑, 돌망치, 수평계",
+        "location": "제주 마을 야외 작업장",
+        "duration_minutes": "60",
+        "capacity": "10",
+        "price_per_person": "50000",
+    }
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(
+        transport=transport, base_url="http://test", follow_redirects=True
+    ) as ac:
+        res = await ac.post("/api/v1/experience-plan", json=payload)
+
+    app.dependency_overrides.clear()
+
+    assert res.status_code == 200
+    user_message = fake_client.store["messages"][1]["content"]
+    assert "<reference_context>" not in user_message

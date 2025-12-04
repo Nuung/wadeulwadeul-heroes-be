@@ -151,9 +151,10 @@ def build_user_prompt(
     duration_minutes: str,
     capacity: str,
     price_per_person: str,
+    rag_context: str | None = None,
 ) -> str:
     """Build user prompt with provided information."""
-    return f"""
+    base_prompt = f"""
 다음 정보를 바탕으로 체험 클래스의 전체 템플릿을 작성해 주세요:
 
 <class_information>
@@ -171,3 +172,14 @@ def build_user_prompt(
 시간 배분은 총 {duration_minutes}분에 맞춰 오프닝, 준비, 핵심 체험, 마무리로 구성해 주세요.
 반드시 JSON만 출력해 주세요.
 """.strip()
+
+    if rag_context:
+        reference = f"""
+
+<reference_context>
+{rag_context}
+</reference_context>
+""".strip()
+        return f"{base_prompt}\n\n{reference}"
+
+    return base_prompt

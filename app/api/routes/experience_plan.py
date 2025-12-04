@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 from json import JSONDecodeError
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from openai import AsyncOpenAI
@@ -17,6 +17,9 @@ from app.libs.openai_client import get_openai_client
 from app.models.user import User
 from app.prompts import experience_plan as experience_plan_prompts
 from app.prompts import materials_suggestion, steps_suggestion
+
+if TYPE_CHECKING:  # pragma: no cover - import-time side effects guarded
+    from llm.rag_retriever import RAGRetriever
 
 router = APIRouter(prefix="/experience-plan", tags=["experience-plan"])
 
@@ -34,12 +37,26 @@ class ExperienceRequest(BaseModel):
     price_per_person: str = Field(..., description="1인당 요금")
 
 
+def get_rag_retriever() -> RAGRetriever | None:
+    """
+    RAGRetriever 의존성 제공. 기본 구현은 lazy 초기화 실패를 방지하기 위해 None을 허용한다.
+    테스트에서는 dependency override로 주입한다.
+    """
+    try:
+        from llm.rag_retriever import RAGRetriever
+
+        return RAGRetriever()
+    except Exception:
+        return None
+
+
 @router.post("/", status_code=status.HTTP_200_OK)
 async def generate_experience_plan(
     payload: ExperienceRequest,
     _current_user: User | None = Depends(get_current_user_optional),
     db: AsyncSession = Depends(get_db),
     openai_client: AsyncOpenAI = Depends(get_openai_client),
+    rag_retriever: RAGRetriever | None = Depends(get_rag_retriever),
 ) -> dict[str, Any]:
     """
     OpenAI GPT API를 호출하여 체험 클래스 템플릿 생성.
@@ -57,6 +74,35 @@ async def generate_experience_plan(
     _ = db
 
     system_prompt = experience_plan_prompts.get_system_prompt()
+    rag_context = ""
+    if rag_retriever:
+        query = " ".join(
+            [
+                payload.category,
+                payload.years_of_experience,
+                payload.job_description,
+                payload.materials,
+                payload.location,
+            ]
+        )
+        try:
+            results = rag_retriever.retrieve(query=query, top_k=3)
+            if results:
+                formatted = [
+                    " | ".join(
+                        [
+                            item.get("title", ""),
+                            item.get("introduction", ""),
+                            item.get("alltag", ""),
+                            item.get("address", ""),
+                        ]
+                    )
+                    for item in results
+                ]
+                rag_context = "\n".join(formatted)
+        except Exception:
+            rag_context = ""
+
     user_prompt = experience_plan_prompts.build_user_prompt(
         category=payload.category,
         years_of_experience=payload.years_of_experience,
@@ -66,6 +112,7 @@ async def generate_experience_plan(
         duration_minutes=payload.duration_minutes,
         capacity=payload.capacity,
         price_per_person=payload.price_per_person,
+        rag_context=rag_context or None,
     )
 
     messages = [
@@ -113,6 +160,7 @@ async def suggest_materials(
     _current_user: User | None = Depends(get_current_user_optional),
     db: AsyncSession = Depends(get_db),
     openai_client: AsyncOpenAI = Depends(get_openai_client),
+    rag_retriever: RAGRetriever | None = Depends(get_rag_retriever),
 ) -> MaterialsSuggestionResponse:
     """
     OpenAI GPT API를 호출하여 재료 추천 텍스트 생성.
@@ -130,10 +178,38 @@ async def suggest_materials(
     _ = db
 
     system_prompt = materials_suggestion.get_system_prompt()
+    rag_context = ""
+    if rag_retriever:
+        query = " ".join(
+            [
+                payload.category,
+                payload.years_of_experience,
+                payload.job_description,
+            ]
+        )
+        try:
+            results = rag_retriever.retrieve(query=query, top_k=3)
+            if results:
+                formatted = [
+                    " | ".join(
+                        [
+                            item.get("title", ""),
+                            item.get("introduction", ""),
+                            item.get("alltag", ""),
+                            item.get("address", ""),
+                        ]
+                    )
+                    for item in results
+                ]
+                rag_context = "\n".join(formatted)
+        except Exception:
+            rag_context = ""
+
     user_prompt = materials_suggestion.build_user_prompt(
         category=payload.category,
         years_of_experience=payload.years_of_experience,
         job_description=payload.job_description,
+        rag_context=rag_context or None,
     )
 
     messages = [
@@ -173,6 +249,7 @@ async def suggest_steps(
     _current_user: User | None = Depends(get_current_user_optional),
     db: AsyncSession = Depends(get_db),
     openai_client: AsyncOpenAI = Depends(get_openai_client),
+    rag_retriever: RAGRetriever | None = Depends(get_rag_retriever),
 ) -> StepsSuggestionResponse:
     """
     OpenAI GPT API를 호출하여 단계별 방법 텍스트 생성.
@@ -190,11 +267,40 @@ async def suggest_steps(
     _ = db
 
     system_prompt = steps_suggestion.get_system_prompt()
+    rag_context = ""
+    if rag_retriever:
+        query = " ".join(
+            [
+                payload.category,
+                payload.years_of_experience,
+                payload.job_description,
+                payload.materials,
+            ]
+        )
+        try:
+            results = rag_retriever.retrieve(query=query, top_k=3)
+            if results:
+                formatted = [
+                    " | ".join(
+                        [
+                            item.get("title", ""),
+                            item.get("introduction", ""),
+                            item.get("alltag", ""),
+                            item.get("address", ""),
+                        ]
+                    )
+                    for item in results
+                ]
+                rag_context = "\n".join(formatted)
+        except Exception:
+            rag_context = ""
+
     user_prompt = steps_suggestion.build_user_prompt(
         category=payload.category,
         years_of_experience=payload.years_of_experience,
         job_description=payload.job_description,
         materials=payload.materials,
+        rag_context=rag_context or None,
     )
 
     messages = [
