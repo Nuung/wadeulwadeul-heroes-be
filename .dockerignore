@@ -27,8 +27,8 @@ env/
 htmlcov/
 
 # Environment
-.env
-.env.local
+/.env
+/.env.local
 
 # Git
 .git/
