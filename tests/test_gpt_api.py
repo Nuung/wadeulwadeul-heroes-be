@@ -81,4 +81,4 @@ async def test_generate_experience_plan_uses_prompts(client):
     user_message = messages[1]["content"]
     assert payload["answer1"] in user_message
     assert "{{answer1}}" not in user_message
-    assert fake_client.store["model"] == "gpt-5-mini"
+    assert fake_client.store["model"] == "gpt-4o"

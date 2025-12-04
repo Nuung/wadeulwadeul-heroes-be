@@ -296,3 +296,105 @@ async def delete_class(
 
     await db.delete(one_day_class)
     await db.flush()
+
+
+# Schemas for my-classes/enrollments endpoint
+class UserInfoResponse(BaseModel):
+    """신청자 정보."""
+
+    user_id: UUID
+    name: str
+    email: str
+
+
+class EnrollmentWithUserResponse(BaseModel):
+    """신청 정보 + 신청자 정보."""
+
+    enrollment_id: UUID
+    applied_date: str
+    headcount: int
+    user_info: UserInfoResponse
+
+
+class ClassInfoResponse(BaseModel):
+    """클래스 정보."""
+
+    category: str
+    location: str
+    start_time: str
+    duration_minutes: int
+    capacity: int
+    notes: str | None
+
+
+class ClassEnrollmentResponse(BaseModel):
+    """클래스 + 신청자 목록."""
+
+    class_id: UUID
+    class_info: ClassInfoResponse
+    enrollments: list[EnrollmentWithUserResponse]
+
+
+@router.get("/my-classes/enrollments", response_model=list[ClassEnrollmentResponse])
+async def list_my_classes_enrollments(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> list[dict]:
+    """
+    OLD 사용자가 자신이 만든 클래스와 신청자 목록 조회.
+    """
+    # 1. UserType 검증
+    if current_user.type != UserType.OLD:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only OLD users can view their class enrollments",
+        )
+
+    # 2. 자신이 만든 클래스 조회
+    classes_result = await db.execute(
+        select(OneDayClass).where(OneDayClass.creator_id == current_user.id)
+    )
+    classes = classes_result.scalars().all()
+
+    # 3. 각 클래스별 신청자 조회
+    response = []
+    for cls in classes:
+        # 해당 클래스의 enrollments 조회
+        enrollments_result = await db.execute(
+            select(Enrollment).where(Enrollment.class_id == cls.id)
+        )
+        enrollments = enrollments_result.scalars().all()
+
+        # 각 enrollment의 user 정보 조회
+        enrollment_with_users = []
+        for enrollment in enrollments:
+            user_result = await db.execute(
+                select(User).where(User.id == enrollment.user_id)
+            )
+            user = user_result.scalar_one()
+
+            enrollment_with_users.append({
+                "enrollment_id": enrollment.id,
+                "applied_date": enrollment.applied_date,
+                "headcount": enrollment.headcount,
+                "user_info": {
+                    "user_id": user.id,
+                    "name": user.name,
+                    "email": user.email,
+                },
+            })
+
+        response.append({
+            "class_id": cls.id,
+            "class_info": {
+                "category": cls.category,
+                "location": cls.location,
+                "start_time": cls.start_time,
+                "duration_minutes": cls.duration_minutes,
+                "capacity": cls.capacity,
+                "notes": cls.notes,
+            },
+            "enrollments": enrollment_with_users,
+        })
+
+    return response

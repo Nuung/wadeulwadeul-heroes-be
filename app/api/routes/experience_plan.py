@@ -232,7 +232,7 @@ async def generate_experience_plan(
     ]
 
     completion = await openai_client.chat.completions.create(
-        model="gpt-5-mini",
+        model="gpt-4o",
         messages=messages,
         temperature=0,
     )
