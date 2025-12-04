@@ -11,7 +11,8 @@ spec:
   - host: goormthon-5.goorm.training
     http:
       paths:
-      - path: /
+      # 모든 /api 요청을 backend로 라우팅 (rewrite 없음)
+      - path: /api
         pathType: Prefix
         backend:
           service:

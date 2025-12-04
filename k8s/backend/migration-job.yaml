@@ -7,9 +7,8 @@ metadata:
     app: backend
     component: migration
   annotations:
-    # ArgoCD가 배포 시 자동으로 마이그레이션 실행
     argocd.argoproj.io/hook: PreSync
-    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+    argocd.argoproj.io/hook-delete-policy: HookSucceeded,HookFailed
 spec:
   ttlSecondsAfterFinished: 300  # Job은 완료 후 5분 뒤 자동 삭제
   backoffLimit: 3
@@ -22,7 +21,7 @@ spec:
       restartPolicy: Never
       containers:
       - name: migration
-        image: 837126493345.dkr.ecr.ap-northeast-2.amazonaws.com/goormthon-5/backend:build-19
+        image: 837126493345.dkr.ecr.ap-northeast-2.amazonaws.com/goormthon-5/backend:build-20
         command: ["alembic", "upgrade", "head"]
         env:
         - name: ENVIRONMENT

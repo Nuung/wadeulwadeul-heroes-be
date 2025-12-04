@@ -115,6 +115,47 @@ pipeline {
             }
         }
 
+        stage('Run Database Migration') {
+            steps {
+                script {
+                    echo "Running database migration..."
+
+                    // 기존 migration job 삭제 (있으면)
+                    sh """
+                        kubectl delete job backend-migration -n ${params.NAMESPACE} --ignore-not-found=true
+                    """
+
+                    // migration job 실행
+                    sh """
+                        kubectl apply -f k8s/jobs/migration-job.yaml
+                    """
+
+                    // migration job 완료 대기 (최대 5분)
+                    def migrationSuccess = sh(
+                        script: """
+                            kubectl wait --for=condition=complete \
+                                --timeout=300s \
+                                job/backend-migration \
+                                -n ${params.NAMESPACE}
+                        """,
+                        returnStatus: true
+                    )
+
+                    if (migrationSuccess != 0) {
+                        // migration 로그 출력
+                        sh """
+                            kubectl logs -n ${params.NAMESPACE} \
+                                -l component=migration \
+                                --tail=100
+                        """
+                        error("Database migration failed!")
+                    }
+
+                    echo "✅ Database migration completed successfully"
+                }
+            }
+        }
+
         stage('Deploy to Kubernetes') {
             steps {
                 script {

@@ -32,11 +32,35 @@ spec:
         - name: http
           containerPort: 8000
           protocol: TCP
-        envFrom:
-        - configMapRef:
-            name: backend-config
-        # - secretRef:
-        #     name: backend-secret
+        env:
+        # Application settings
+        - name: APP_NAME
+          value: "Wadeulwadeul Heroes API"
+        - name: APP_VERSION
+          value: "0.1.0"
+        - name: DEBUG
+          value: "false"
+        - name: ENVIRONMENT
+          value: "production"
+        # Database settings - PostgreSQL
+        - name: DB_HOST
+          value: "postgres.goormthon-5.svc.cluster.local"
+        - name: DB_PORT
+          value: "5432"
+        - name: DB_USER
+          value: "postgres"
+        - name: DB_PASSWORD
+          value: "postgres123"
+        - name: DB_NAME
+          value: "wadeulwadeul_db"
+        - name: DB_POOL_SIZE
+          value: "10"
+        - name: DB_MAX_OVERFLOW
+          value: "20"
+        - name: DB_POOL_PRE_PING
+          value: "true"
+        - name: DB_ECHO
+          value: "false"
         resources:
           requests:
             memory: "256Mi"

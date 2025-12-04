@@ -28,13 +28,13 @@ app.add_middleware(
 # Authentication middleware (hackathon simple auth)
 app.add_middleware(WadeulwadeulAuthMiddleware)
 
-# Include routers
-app.include_router(health.router)
+# Include routers - 모든 엔드포인트는 /api로 시작
+app.include_router(health.router, prefix="/api")
 app.include_router(heroes.router, prefix="/api/v1")
 app.include_router(users.router, prefix="/api/v1")
 
 
-@app.get("/")
+@app.get("/api")
 async def root() -> dict[str, str]:
     """Root endpoint."""
     return {
