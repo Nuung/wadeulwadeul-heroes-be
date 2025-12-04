@@ -6,6 +6,10 @@ metadata:
   labels:
     app: backend
     component: migration
+  annotations:
+    # ArgoCD가 배포 시 자동으로 마이그레이션 실행
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
 spec:
   ttlSecondsAfterFinished: 300  # Job은 완료 후 5분 뒤 자동 삭제
   backoffLimit: 3
@@ -20,10 +24,9 @@ spec:
       - name: migration
         image: 837126493345.dkr.ecr.ap-northeast-2.amazonaws.com/goormthon-5/backend:build-19
         command: ["alembic", "upgrade", "head"]
-        envFrom:
-        - configMapRef:
-            name: backend-config
         env:
+        - name: ENVIRONMENT
+          value: "production"
         - name: DB_HOST
           value: "postgres.goormthon-5.svc.cluster.local"
         - name: DB_PORT
@@ -34,6 +37,14 @@ spec:
           value: "postgres123"
         - name: DB_NAME
           value: "wadeulwadeul_db"
+        - name: DB_POOL_SIZE
+          value: "10"
+        - name: DB_MAX_OVERFLOW
+          value: "20"
+        - name: DB_POOL_PRE_PING
+          value: "true"
+        - name: DB_ECHO
+          value: "false"
         resources:
           requests:
             memory: "128Mi"
