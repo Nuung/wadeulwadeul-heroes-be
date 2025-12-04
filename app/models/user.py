@@ -8,6 +8,7 @@ from uuid import UUID, uuid4
 from sqlalchemy import Enum, String
 from sqlalchemy.orm import Mapped, mapped_column
 
+from app.core.config import settings
 from app.core.database import Base
 
 
@@ -19,10 +20,17 @@ class UserType(str, enum.Enum):
 
 
 class User(Base):
-    """User database model."""
+    """
+    User database model.
+
+    Note: PostgreSQL uses 'app' schema, SQLite does not support schemas.
+    Reference: https://docs.sqlalchemy.org/en/20/dialects/sqlite.html
+    """
 
     __tablename__ = "users"
-    __table_args__: ClassVar[dict[str, str]] = {"schema": "app"}
+    __table_args__: ClassVar[dict[str, str]] = (
+        {"schema": "app"} if settings.environment == "production" else {}
+    )
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)

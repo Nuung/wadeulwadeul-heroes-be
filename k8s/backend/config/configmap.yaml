@@ -11,6 +11,7 @@ data:
   APP_VERSION: "0.1.0"
   DEBUG: "false"
   API_PREFIX: "/api/v1"
+  ENVIRONMENT: "production"
 
   # Database settings
   DB_HOST: "postgres.goormthon-5.svc.cluster.local"

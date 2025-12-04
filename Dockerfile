@@ -21,6 +21,8 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 # Copy application code
 COPY ./app ./app
+COPY ./alembic ./alembic
+COPY ./alembic.ini ./alembic.ini
 
 # Install the project
 RUN --mount=type=cache,target=/root/.cache/uv \
@@ -37,6 +39,10 @@ COPY --from=builder /app/.venv /app/.venv
 
 # Copy application code
 COPY --from=builder /app/app /app/app
+
+# Copy alembic for migrations
+COPY --from=builder /app/alembic /app/alembic
+COPY --from=builder /app/alembic.ini /app/alembic.ini
 
 # Add virtual environment to PATH
 ENV PATH="/app/.venv/bin:$PATH"

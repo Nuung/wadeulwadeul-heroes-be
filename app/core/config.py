@@ -12,8 +12,11 @@ class Settings(BaseSettings):
     debug: bool = False
     api_prefix: str = "/api/v1"
 
-    # Database settings
-    db_host: str = "postgres.goormthon-5.svc.cluster.local"
+    # Environment (local or production)
+    environment: str = "local"
+
+    # Database settings (PostgreSQL - only used in production)
+    db_host: str = ""
     db_port: int = 5432
     db_user: str = "postgres"
     db_password: str = "postgres123"
@@ -28,7 +31,20 @@ class Settings(BaseSettings):
     @computed_field
     @property
     def database_url(self) -> str:
-        """Build database URL from components."""
+        """
+        Build database URL based on environment.
+
+        Returns:
+            - SQLite (aiosqlite) for local development
+            - PostgreSQL (asyncpg) for production
+
+        Reference: https://docs.sqlalchemy.org/en/20/orm/extensions/asyncio.html
+        """
+        # Use SQLite for local development
+        if self.environment == "local" or not self.db_host:
+            return "sqlite+aiosqlite:///./wadeulwadeul_local.db"
+
+        # Use PostgreSQL for production
         return f"postgresql+asyncpg://{self.db_user}:{self.db_password}@{self.db_host}:{self.db_port}/{self.db_name}"
 
     model_config = SettingsConfigDict(
