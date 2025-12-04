@@ -40,9 +40,14 @@ class Settings(BaseSettings):
 
         Reference: https://docs.sqlalchemy.org/en/20/orm/extensions/asyncio.html
         """
+        env = self.environment.lower()
+
         # Use SQLite for local development
-        if self.environment == "local" or not self.db_host:
+        if env == "local":
             return "sqlite+aiosqlite:///./wadeulwadeul_local.db"
+
+        if not self.db_host:
+            raise ValueError("DB_HOST is required when ENVIRONMENT is production")
 
         # Use PostgreSQL for production
         return f"postgresql+asyncpg://{self.db_user}:{self.db_password}@{self.db_host}:{self.db_port}/{self.db_name}"
