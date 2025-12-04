@@ -299,7 +299,7 @@ pipeline {
                             sleep 5
 
                             # Health check
-                            curl -f http://localhost:8080/health/ping || exit 1
+                            curl -f http://localhost:8080/api/health/ping || exit 1
 
                             # Port-forward 종료
                             kill \$PF_PID

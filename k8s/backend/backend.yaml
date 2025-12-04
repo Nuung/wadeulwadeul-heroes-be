@@ -24,44 +24,6 @@ spec:
         app: backend
         version: "v1"
     spec:
-      initContainers:
-      - name: db-migrate
-        image: 837126493345.dkr.ecr.ap-northeast-2.amazonaws.com/goormthon-5/backend:build-29
-        imagePullPolicy: Always
-        command: ["/bin/sh", "-c"]
-        args:
-        - |
-          set -euo pipefail
-          alembic upgrade head
-        env:
-        # Application settings
-        - name: APP_NAME
-          value: "Wadeulwadeul Heroes API"
-        - name: APP_VERSION
-          value: "0.1.0"
-        - name: DEBUG
-          value: "false"
-        - name: ENVIRONMENT
-          value: "production"
-        # Database settings - PostgreSQL
-        - name: DB_HOST
-          value: "postgres.goormthon-5.svc.cluster.local"
-        - name: DB_PORT
-          value: "5432"
-        - name: DB_USER
-          value: "postgres"
-        - name: DB_PASSWORD
-          value: "postgres123"
-        - name: DB_NAME
-          value: "wadeulwadeul_db"
-        - name: DB_POOL_SIZE
-          value: "10"
-        - name: DB_MAX_OVERFLOW
-          value: "20"
-        - name: DB_POOL_PRE_PING
-          value: "true"
-        - name: DB_ECHO
-          value: "false"
       containers:
       - name: backend
         image: 837126493345.dkr.ecr.ap-northeast-2.amazonaws.com/goormthon-5/backend:build-29
@@ -108,7 +70,7 @@ spec:
             cpu: "1000m"
         livenessProbe:
           httpGet:
-            path: /health/ping
+            path: /api/health/ping
             port: 8000
           initialDelaySeconds: 30
           periodSeconds: 10
@@ -116,7 +78,7 @@ spec:
           failureThreshold: 3
         readinessProbe:
           httpGet:
-            path: /health/ping
+            path: /api/health/ping
             port: 8000
           initialDelaySeconds: 10
           periodSeconds: 5

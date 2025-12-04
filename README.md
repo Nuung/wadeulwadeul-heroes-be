@@ -132,7 +132,7 @@ async def protected_endpoint(user: User = Depends(get_current_user)):
 
 **Health:**
 - `GET /` - Root endpoint
-- `GET /health/ping` - Health check endpoint
+- `GET /api/health/ping` - Health check endpoint
 
 **Heroes API:**
 - `GET /api/v1/heroes` - List all heroes
@@ -176,9 +176,6 @@ DB_PASSWORD=postgres123
 DB_NAME=wadeulwadeul_db
 EOF
 
-# Run migrations (if using Alembic)
-# uv run alembic upgrade head
-
 # Start the application
 uv run uvicorn app.main:app --reload
 ```
@@ -199,7 +196,7 @@ docker run -p 8000:8000 wadeulwadeul-heroes-be
 
 ### Health Check
 
-The Docker container includes a health check that pings `/health/ping` every 30 seconds.
+The Docker container includes a health check that pings `/api/health/ping` every 30 seconds.
 
 ## Kubernetes Deployment (AWS EKS)
 
