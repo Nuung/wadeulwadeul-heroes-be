@@ -23,7 +23,7 @@ class OneDayClass(Base):
     creator_id: Mapped[UUID] = mapped_column(nullable=False)
     category: Mapped[str] = mapped_column(String(255), nullable=False)
     location: Mapped[str] = mapped_column(String(255), nullable=False)
-    start_time: Mapped[datetime] = mapped_column(nullable=False)
+    start_time: Mapped[str] = mapped_column(String(100), nullable=False)
     duration_minutes: Mapped[int] = mapped_column(nullable=False)
     capacity: Mapped[int] = mapped_column(nullable=False)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)

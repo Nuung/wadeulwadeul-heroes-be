@@ -1,16 +1,16 @@
 """One-day class CRUD endpoints."""
 
-from datetime import UTC, datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.auth import get_current_user
+from app.core.auth import get_current_user, get_current_user_optional
 from app.core.database import get_db
 from app.models.class_ import OneDayClass
+from app.models.enrollment import Enrollment
 from app.models.user import User, UserType
 
 router = APIRouter(prefix="/classes", tags=["classes"])
@@ -21,18 +21,10 @@ class ClassBase(BaseModel):
 
     category: str
     location: str
-    start_time: datetime
+    start_time: str
     duration_minutes: int
     capacity: int
     notes: str | None = None
-
-    @field_validator("start_time")
-    @classmethod
-    def normalize_start_time(cls, value: datetime) -> datetime:
-        """tz-aware면 UTC로 변환 후 naive로 저장."""
-        if value.tzinfo is not None:
-            return value.astimezone(UTC).replace(tzinfo=None)
-        return value
 
 
 class ClassCreate(ClassBase):
@@ -98,6 +90,23 @@ async def list_classes(
     return list(classes)
 
 
+@router.get("/public", response_model=list[ClassResponse])
+async def list_classes_public(
+    skip: int = 0,
+    limit: int = 100,
+    _current_user: User | None = Depends(get_current_user_optional),
+    db: AsyncSession = Depends(get_db),
+) -> list[OneDayClass]:
+    """
+    원데이 클래스 공개 목록 조회 (인증 선택).
+    """
+    result = await db.execute(
+        select(OneDayClass).offset(skip).limit(limit)
+    )
+    classes = result.scalars().all()
+    return list(classes)
+
+
 @router.get("/{class_id}", response_model=ClassResponse)
 async def get_class_by_id(
     class_id: UUID,
@@ -118,25 +127,92 @@ async def get_class_by_id(
     return one_day_class
 
 
+class EnrollmentCreate(BaseModel):
+    """신청 생성 요청."""
+
+    applied_date: str
+    headcount: int
+
+
+class EnrollmentResponse(BaseModel):
+    """신청 응답."""
+
+    id: UUID
+    class_id: UUID
+    user_id: UUID
+    applied_date: str
+    headcount: int
+
+    model_config = {"from_attributes": True}
+
+
+@router.post("/{class_id}/enroll", response_model=EnrollmentResponse, status_code=status.HTTP_201_CREATED)
+async def enroll_class(
+    class_id: UUID,
+    payload: EnrollmentCreate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> Enrollment:
+    """
+    원데이 클래스 신청 (YOUNG 사용자만, 중복 신청 방지).
+    """
+    if current_user.type != UserType.YOUNG:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only YOUNG users can enroll",
+        )
+
+    class_result = await db.execute(select(OneDayClass).where(OneDayClass.id == class_id))
+    target_class = class_result.scalar_one_or_none()
+    if target_class is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Class not found")
+
+    # 중복 신청 검사
+    dup = await db.execute(
+        select(Enrollment).where(
+            Enrollment.class_id == class_id,
+            Enrollment.user_id == current_user.id,
+        )
+    )
+    if dup.scalar_one_or_none():
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Already enrolled")
+
+    enrollment = Enrollment(
+        class_id=class_id,
+        user_id=current_user.id,
+        applied_date=payload.applied_date,
+        headcount=payload.headcount,
+    )
+    db.add(enrollment)
+    await db.flush()
+    await db.refresh(enrollment)
+    return enrollment
+
+
+@router.get("/enrollments/me", response_model=list[EnrollmentResponse])
+async def list_my_enrollments(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> list[Enrollment]:
+    """
+    내가 신청한 원데이 클래스 목록.
+    """
+    result = await db.execute(
+        select(Enrollment).where(Enrollment.user_id == current_user.id)
+    )
+    enrollments = result.scalars().all()
+    return list(enrollments)
+
+
 class ClassUpdate(BaseModel):
     """수정 요청 스키마."""
 
     category: str | None = None
     location: str | None = None
-    start_time: datetime | None = None
+    start_time: str | None = None
     duration_minutes: int | None = None
     capacity: int | None = None
     notes: str | None = None
-
-    @field_validator("start_time")
-    @classmethod
-    def normalize_start_time(cls, value: datetime | None) -> datetime | None:
-        """tz-aware면 UTC로 변환 후 naive로 저장."""
-        if value is None:
-            return value
-        if value.tzinfo is not None:
-            return value.astimezone(UTC).replace(tzinfo=None)
-        return value
 
 
 @router.put("/{class_id}", response_model=ClassResponse)
@@ -168,6 +244,33 @@ async def update_class(
     await db.flush()
     await db.refresh(one_day_class)
     return one_day_class
+
+
+@router.delete("/enrollments/{enrollment_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_enrollment(
+    enrollment_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    """
+    원데이 클래스 신청 취소 (본인만).
+    """
+    result = await db.execute(
+        select(Enrollment).where(Enrollment.id == enrollment_id)
+    )
+    enrollment = result.scalar_one_or_none()
+
+    if enrollment is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Enrollment not found")
+
+    if enrollment.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only owner can cancel enrollment",
+        )
+
+    await db.delete(enrollment)
+    await db.flush()
 
 
 @router.delete("/{class_id}", status_code=status.HTTP_204_NO_CONTENT)

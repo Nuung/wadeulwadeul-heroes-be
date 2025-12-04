@@ -1,3 +1,6 @@
+-- DROP SCHEMA IF EXISTS app CASCADE;
+-- DROP SCHEMA IF EXISTS audit CASCADE;
+-- DROP FUNCTION IF EXISTS app.update_updated_at_column();
 -- PostgreSQL initialization script for Wadeulwadeul Heroes
 -- This script runs only once when the database is first created
 
@@ -51,12 +54,21 @@ CREATE TABLE IF NOT EXISTS app.classes (
     creator_id UUID NOT NULL,
     category VARCHAR(255) NOT NULL,
     location VARCHAR(255) NOT NULL,
-    start_time TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    start_time VARCHAR(100) NOT NULL,
     duration_minutes INT NOT NULL,
     capacity INT NOT NULL,
     notes TEXT,
     created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create enrollments table
+CREATE TABLE IF NOT EXISTS app.enrollments (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    class_id UUID NOT NULL,
+    user_id UUID NOT NULL,
+    applied_date VARCHAR(50) NOT NULL,
+    headcount INT NOT NULL
 );
 
 -- Create audit log table
@@ -79,6 +91,8 @@ CREATE INDEX IF NOT EXISTS idx_users_type ON app.users(type);
 CREATE INDEX IF NOT EXISTS idx_classes_category ON app.classes(category);
 CREATE INDEX IF NOT EXISTS idx_classes_start_time ON app.classes(start_time);
 CREATE INDEX IF NOT EXISTS idx_classes_creator ON app.classes(creator_id);
+CREATE INDEX IF NOT EXISTS idx_enrollments_user ON app.enrollments(user_id);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_enrollments_class_user ON app.enrollments(class_id, user_id);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_table ON audit.logs(table_name);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_changed_at ON audit.logs(changed_at);
 

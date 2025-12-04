@@ -127,7 +127,7 @@ async def test_create_class_persists_and_returned(client: AsyncClient, session_m
     payload = {
         "category": "music",
         "location": "Busan, Korea",
-        "start_time": "2025-12-05T15:00:00Z",
+        "start_time": "2025-12-05 ~ 2025-12-06",
         "duration_minutes": 120,
         "capacity": 8,
         "notes": "Bring your instrument",
@@ -163,7 +163,7 @@ async def test_get_class_by_id(client: AsyncClient, session_maker):
     payload = {
         "category": "baking",
         "location": "Daegu, Korea",
-        "start_time": "2025-12-06T10:00:00Z",
+        "start_time": "2025-12-06 ~ 2025-12-07",
         "duration_minutes": 60,
         "capacity": 12,
         "notes": "Ingredients provided",
@@ -196,7 +196,7 @@ async def test_list_classes(client: AsyncClient, session_maker):
         {
             "category": "art",
             "location": "Seoul",
-            "start_time": "2025-12-10T10:00:00Z",
+            "start_time": "2025-12-10",
             "duration_minutes": 60,
             "capacity": 5,
             "notes": None,
@@ -204,7 +204,7 @@ async def test_list_classes(client: AsyncClient, session_maker):
         {
             "category": "cook",
             "location": "Busan",
-            "start_time": "2025-12-11T15:00:00Z",
+            "start_time": "2025-12-11",
             "duration_minutes": 90,
             "capacity": 10,
             "notes": "Apron",
@@ -229,6 +229,38 @@ async def test_list_classes(client: AsyncClient, session_maker):
 
 
 @pytest.mark.anyio
+async def test_public_list_classes_with_pagination(client: AsyncClient, session_maker):
+    await create_user(session_maker, "Old User", "old@example.com", UserType.OLD)
+
+    for idx in range(3):
+        payload = {
+            "category": f"cat-{idx}",
+            "location": f"loc-{idx}",
+            "start_time": "2025-12-15T10:00:00Z",
+            "duration_minutes": 30 + idx,
+            "capacity": 5 + idx,
+            "notes": None,
+        }
+        res = await client.post(
+            "/api/v1/classes",
+            json=payload,
+            headers={"wadeulwadeul-user": "old@example.com"},
+        )
+        assert res.status_code == 201
+
+    # no auth header, pagination
+    res = await client.get("/api/v1/classes/public?skip=0&limit=2")
+    assert res.status_code == 200
+    data = res.json()
+    assert len(data) == 2
+
+    res_next = await client.get("/api/v1/classes/public?skip=2&limit=2")
+    assert res_next.status_code == 200
+    data_next = res_next.json()
+    assert len(data_next) == 1
+
+
+@pytest.mark.anyio
 async def test_update_class_by_creator(client: AsyncClient, session_maker):
     await create_user(session_maker, "Old User", "old@example.com", UserType.OLD)
     await create_user(session_maker, "Young User", "young@example.com", UserType.YOUNG)
@@ -236,7 +268,7 @@ async def test_update_class_by_creator(client: AsyncClient, session_maker):
     payload = {
         "category": "dance",
         "location": "Seoul",
-        "start_time": "2025-12-12T18:00:00Z",
+        "start_time": "2025-12-12",
         "duration_minutes": 45,
         "capacity": 6,
         "notes": None,
@@ -250,7 +282,7 @@ async def test_update_class_by_creator(client: AsyncClient, session_maker):
     assert create_res.status_code == 201
     class_id = create_res.json()["id"]
 
-    update_payload = {"category": "dance-updated", "capacity": 7}
+    update_payload = {"category": "dance-updated", "capacity": 7, "start_time": "2025-12-12 ~ 2025-12-13"}
 
     # Young 사용자: 수정 불가
     res = await client.put(
@@ -280,7 +312,7 @@ async def test_delete_class_by_creator(client: AsyncClient, session_maker):
     payload = {
         "category": "craft",
         "location": "Incheon",
-        "start_time": "2025-12-13T14:00:00Z",
+        "start_time": "2025-12-13",
         "duration_minutes": 80,
         "capacity": 9,
         "notes": "Materials included",
