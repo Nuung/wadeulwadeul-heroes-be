@@ -76,10 +76,13 @@ async def create_class(session_maker, creator_id) -> OneDayClass:
             creator_id=creator_id,
             category="cat",
             location="loc",
-            start_time="2025-12-20 ~ 2025-12-21",
             duration_minutes=60,
             capacity=10,
-            notes=None,
+            years_of_experience="2y",
+            job_description="Instructor",
+            materials="Material list",
+            price_per_person="$10",
+            template=None,
         )
         session.add(cls)
         await session.commit()

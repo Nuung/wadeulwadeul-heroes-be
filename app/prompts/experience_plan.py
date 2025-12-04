@@ -195,13 +195,13 @@ Step 4: 정리 & 농가 노하우 공유 (10분)
 
 
 def build_user_prompt(
-    experience_type: str,
+    category: str,
     years_of_experience: str,
     job_description: str,
     materials: str,
     location: str,
     duration_minutes: str,
-    max_participants: str,
+    capacity: str,
     price_per_person: str,
 ) -> str:
     """Build user prompt with provided information."""
@@ -209,13 +209,13 @@ def build_user_prompt(
 다음 정보를 바탕으로 체험 클래스의 전체 템플릿을 작성해 주세요:
 
 <class_information>
-- 체험 유형: {experience_type}
+- 체험 유형: {category}
 - 호스트 경력: {years_of_experience}년
 - 호스트 직업/전문 분야: {job_description}
 - 준비 재료: {materials}
 - 만나는 장소: {location}
 - 총 소요 시간: {duration_minutes}분
-- 최대 참여 인원: {max_participants}명
+- 최대 참여 인원: {capacity}명
 - 1인당 요금: {price_per_person}원
 </class_information>
 

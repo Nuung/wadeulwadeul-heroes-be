@@ -20,13 +20,13 @@ router = APIRouter(prefix="/experience-plan", tags=["experience-plan"])
 class ExperienceRequest(BaseModel):
     """Request for experience plan generation with 8 fields."""
 
-    experience_type: str = Field(..., description="체험 유형")
+    category: str = Field(..., description="체험 유형")
     years_of_experience: str = Field(..., description="해당 분야 경력 년수")
     job_description: str = Field(..., description="직업/전문 분야")
     materials: str = Field(..., description="준비 재료")
     location: str = Field(..., description="만나는 장소")
     duration_minutes: str = Field(..., description="소요 시간 (분)")
-    max_participants: str = Field(..., description="최대 참여 인원")
+    capacity: str = Field(..., description="최대 참여 인원")
     price_per_person: str = Field(..., description="1인당 요금")
 
 
@@ -60,13 +60,13 @@ async def generate_experience_plan(
 
     system_prompt = experience_plan_prompts.get_system_prompt()
     user_prompt = experience_plan_prompts.build_user_prompt(
-        experience_type=payload.experience_type,
+        category=payload.category,
         years_of_experience=payload.years_of_experience,
         job_description=payload.job_description,
         materials=payload.materials,
         location=payload.location,
         duration_minutes=payload.duration_minutes,
-        max_participants=payload.max_participants,
+        capacity=payload.capacity,
         price_per_person=payload.price_per_person,
     )
 
@@ -89,7 +89,7 @@ async def generate_experience_plan(
 class MaterialsSuggestionRequest(BaseModel):
     """Request for materials suggestion."""
 
-    experience_type: str = Field(..., description="체험 유형")
+    category: str = Field(..., description="체험 유형")
     years_of_experience: str = Field(..., description="해당 분야 경력 년수")
     job_description: str = Field(..., description="직업/전문 분야")
 
@@ -124,7 +124,7 @@ async def suggest_materials(
 
     system_prompt = materials_suggestion.get_system_prompt()
     user_prompt = materials_suggestion.build_user_prompt(
-        experience_type=payload.experience_type,
+        category=payload.category,
         years_of_experience=payload.years_of_experience,
         job_description=payload.job_description,
     )
@@ -148,7 +148,7 @@ async def suggest_materials(
 class StepsSuggestionRequest(BaseModel):
     """Request for steps suggestion."""
 
-    experience_type: str = Field(..., description="체험 유형")
+    category: str = Field(..., description="체험 유형")
     years_of_experience: str = Field(..., description="해당 분야 경력 년수")
     job_description: str = Field(..., description="직업/전문 분야")
     materials: str = Field(..., description="준비 재료")
@@ -184,7 +184,7 @@ async def suggest_steps(
 
     system_prompt = steps_suggestion.get_system_prompt()
     user_prompt = steps_suggestion.build_user_prompt(
-        experience_type=payload.experience_type,
+        category=payload.category,
         years_of_experience=payload.years_of_experience,
         job_description=payload.job_description,
         materials=payload.materials,

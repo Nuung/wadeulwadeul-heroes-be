@@ -84,13 +84,13 @@ async def test_generate_experience_plan_uses_prompts(client):
     ac, expected_output, fake_client = client
 
     payload = {
-        "experience_type": "자연 및 야외활동",
+        "category": "자연 및 야외활동",
         "years_of_experience": "20",
         "job_description": "제주도 돌담 장인",
         "materials": "현무암 돌 (크기별 분류), 장갑, 돌망치, 수평계",
         "location": "제주 마을 야외 작업장",
         "duration_minutes": "60",
-        "max_participants": "10",
+        "capacity": "10",
         "price_per_person": "50000",
     }
 
@@ -104,7 +104,7 @@ async def test_generate_experience_plan_uses_prompts(client):
     assert messages[0]["role"] == "system"
     assert "체험" in messages[0]["content"] or "클래스" in messages[0]["content"]
     user_message = messages[1]["content"]
-    assert payload["experience_type"] in user_message
+    assert payload["category"] in user_message
     assert payload["job_description"] in user_message
     assert payload["materials"] in user_message
     assert payload["location"] in user_message
@@ -135,7 +135,7 @@ async def test_materials_suggestion_returns_text(materials_client):
     ac, expected_suggestion, _fake_client = materials_client
 
     payload = {
-        "experience_type": "예술 & 디자인",
+        "category": "예술 & 디자인",
         "years_of_experience": "5",
         "job_description": "돌담 쌓기 장인",
     }
@@ -152,7 +152,7 @@ async def test_materials_suggestion_uses_correct_prompts(materials_client):
     ac, _expected_suggestion, fake_client = materials_client
 
     payload = {
-        "experience_type": "자연 및 야외활동",
+        "category": "자연 및 야외활동",
         "years_of_experience": "20",
         "job_description": "제주도 돌담 장인",
     }
@@ -166,7 +166,7 @@ async def test_materials_suggestion_uses_correct_prompts(materials_client):
     assert "재료" in messages[0]["content"] or "준비물" in messages[0]["content"]
 
     user_message = messages[1]["content"]
-    assert payload["experience_type"] in user_message
+    assert payload["category"] in user_message
     assert payload["years_of_experience"] in user_message
     assert payload["job_description"] in user_message
     assert fake_client.store["model"] == "gpt-4o"
@@ -196,7 +196,7 @@ async def test_steps_suggestion_returns_text(steps_client):
     ac, expected_steps, _fake_client = steps_client
 
     payload = {
-        "experience_type": "자연 및 야외활동",
+        "category": "자연 및 야외활동",
         "years_of_experience": "20",
         "job_description": "제주도 돌담 장인",
         "materials": "현무암 돌 (크기별 분류), 장갑, 돌망치, 수평계",
@@ -214,7 +214,7 @@ async def test_steps_suggestion_uses_correct_prompts(steps_client):
     ac, _expected_steps, fake_client = steps_client
 
     payload = {
-        "experience_type": "예술 & 디자인",
+        "category": "예술 & 디자인",
         "years_of_experience": "5",
         "job_description": "도자기 작가",
         "materials": "도자기 반제품, 유약, 붓, 스펀지",
@@ -229,7 +229,7 @@ async def test_steps_suggestion_uses_correct_prompts(steps_client):
     assert "단계" in messages[0]["content"] or "방법" in messages[0]["content"]
 
     user_message = messages[1]["content"]
-    assert payload["experience_type"] in user_message
+    assert payload["category"] in user_message
     assert payload["years_of_experience"] in user_message
     assert payload["job_description"] in user_message
     assert payload["materials"] in user_message

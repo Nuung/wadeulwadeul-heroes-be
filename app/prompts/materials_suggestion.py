@@ -74,14 +74,14 @@ def get_system_prompt() -> str:
 
 
 def build_user_prompt(
-    experience_type: str, years_of_experience: str, job_description: str
+    category: str, years_of_experience: str, job_description: str
 ) -> str:
     """Build user prompt with provided information."""
     return f"""
 다음 정보를 바탕으로 체험에 필요한 재료와 준비물을 제안해 주세요:
 
 <experience_info>
-- 체험 유형: {experience_type}
+- 체험 유형: {category}
 - 해당 분야 경력: {years_of_experience}년
 - 직업/전문 분야: {job_description}
 </experience_info>

@@ -85,10 +85,13 @@ async def create_class_for_user(
             creator_id=creator_id,
             category=category,
             location=location,
-            start_time="2025-12-20 10:00",
             duration_minutes=60,
             capacity=10,
-            notes="Test class",
+            years_of_experience="5y",
+            job_description="Instructor",
+            materials="Basic materials",
+            price_per_person="$30",
+            template="Class template",
         )
         session.add(cls)
         await session.commit()

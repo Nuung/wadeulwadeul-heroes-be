@@ -80,10 +80,13 @@ async def test_only_old_user_can_create_class(client: AsyncClient, session_maker
     payload = {
         "category": "cooking",
         "location": "Seoul, Korea",
-        "start_time": "2025-12-04T12:00:00Z",
         "duration_minutes": 90,
         "capacity": 10,
-        "notes": "Bring your own apron",
+        "years_of_experience": "5y",
+        "job_description": "Cooking expert",
+        "materials": "Apron, pan",
+        "price_per_person": "$30",
+        "template": "Cooking class template",
     }
 
     # Young 사용자: 권한 없음
@@ -108,11 +111,14 @@ async def test_create_class_requires_fields(client: AsyncClient, session_maker):
     old_user_id = await create_user(session_maker, "Old User", "old@example.com", UserType.OLD)
 
     payload = {
-        # "category" missing
+        # "years_of_experience" missing
+        "category": "music",
         "location": "Seoul, Korea",
-        "start_time": "2025-12-04T12:00:00Z",
         "duration_minutes": 90,
         "capacity": 10,
+        "job_description": "Performer",
+        "materials": "Microphone",
+        "price_per_person": "$100",
     }
 
     res = await client.post(
@@ -131,10 +137,13 @@ async def test_create_class_persists_and_returned(client: AsyncClient, session_m
     payload = {
         "category": "music",
         "location": "Busan, Korea",
-        "start_time": "2025-12-05 ~ 2025-12-06",
         "duration_minutes": 120,
         "capacity": 8,
-        "notes": "Bring your instrument",
+        "years_of_experience": "10y",
+        "job_description": "Professional guitarist",
+        "materials": "Guitar strings, picks",
+        "price_per_person": "$50",
+        "template": "Full class template content",
     }
 
     res = await client.post(
@@ -147,6 +156,11 @@ async def test_create_class_persists_and_returned(client: AsyncClient, session_m
     data = res.json()
     assert data["category"] == payload["category"]
     assert data["location"] == payload["location"]
+    assert data["years_of_experience"] == payload["years_of_experience"]
+    assert data["job_description"] == payload["job_description"]
+    assert data["materials"] == payload["materials"]
+    assert data["price_per_person"] == payload["price_per_person"]
+    assert data["template"] == payload["template"]
 
     class_id = UUID(data["id"])
 
@@ -158,6 +172,14 @@ async def test_create_class_persists_and_returned(client: AsyncClient, session_m
 
     assert row is not None
     assert row.category == payload["category"]
+    assert row.location == payload["location"]
+    assert row.duration_minutes == payload["duration_minutes"]
+    assert row.capacity == payload["capacity"]
+    assert row.years_of_experience == payload["years_of_experience"]
+    assert row.job_description == payload["job_description"]
+    assert row.materials == payload["materials"]
+    assert row.price_per_person == payload["price_per_person"]
+    assert row.template == payload["template"]
 
 
 @pytest.mark.anyio
@@ -167,10 +189,13 @@ async def test_get_class_by_id(client: AsyncClient, session_maker):
     payload = {
         "category": "baking",
         "location": "Daegu, Korea",
-        "start_time": "2025-12-06 ~ 2025-12-07",
         "duration_minutes": 60,
         "capacity": 12,
-        "notes": "Ingredients provided",
+        "years_of_experience": "8y",
+        "job_description": "Baker",
+        "materials": "Flour, sugar",
+        "price_per_person": "$20",
+        "template": None,
     }
 
     create_res = await client.post(
@@ -200,18 +225,24 @@ async def test_list_classes(client: AsyncClient, session_maker):
         {
             "category": "art",
             "location": "Seoul",
-            "start_time": "2025-12-10",
             "duration_minutes": 60,
             "capacity": 5,
-            "notes": None,
+            "years_of_experience": "3y",
+            "job_description": "Artist",
+            "materials": "Paint, brush",
+            "price_per_person": "$15",
+            "template": None,
         },
         {
             "category": "cook",
             "location": "Busan",
-            "start_time": "2025-12-11",
             "duration_minutes": 90,
             "capacity": 10,
-            "notes": "Apron",
+            "years_of_experience": "6y",
+            "job_description": "Chef",
+            "materials": "Knife",
+            "price_per_person": "$25",
+            "template": "Cooking outline",
         },
     ]
 
@@ -240,10 +271,13 @@ async def test_public_list_classes_with_pagination(client: AsyncClient, session_
         payload = {
             "category": f"cat-{idx}",
             "location": f"loc-{idx}",
-            "start_time": "2025-12-15T10:00:00Z",
             "duration_minutes": 30 + idx,
             "capacity": 5 + idx,
-            "notes": None,
+            "years_of_experience": f"{idx + 1}y",
+            "job_description": f"Job-{idx}",
+            "materials": f"Materials-{idx}",
+            "price_per_person": f"${10 + idx}",
+            "template": None,
         }
         res = await client.post(
             "/api/v1/classes",
@@ -272,10 +306,13 @@ async def test_update_class_by_creator(client: AsyncClient, session_maker):
     payload = {
         "category": "dance",
         "location": "Seoul",
-        "start_time": "2025-12-12",
         "duration_minutes": 45,
         "capacity": 6,
-        "notes": None,
+        "years_of_experience": "4y",
+        "job_description": "Dancer",
+        "materials": "Shoes",
+        "price_per_person": "$35",
+        "template": None,
     }
 
     create_res = await client.post(
@@ -286,7 +323,12 @@ async def test_update_class_by_creator(client: AsyncClient, session_maker):
     assert create_res.status_code == 201
     class_id = create_res.json()["id"]
 
-    update_payload = {"category": "dance-updated", "capacity": 7, "start_time": "2025-12-12 ~ 2025-12-13"}
+    update_payload = {
+        "category": "dance-updated",
+        "capacity": 7,
+        "materials": "Shoes, water",
+        "template": "Updated template",
+    }
 
     # Young 사용자: 수정 불가
     res = await client.put(
@@ -306,6 +348,8 @@ async def test_update_class_by_creator(client: AsyncClient, session_maker):
     data = res.json()
     assert data["category"] == "dance-updated"
     assert data["capacity"] == 7
+    assert data["materials"] == "Shoes, water"
+    assert data["template"] == "Updated template"
 
 
 @pytest.mark.anyio
@@ -316,10 +360,13 @@ async def test_delete_class_by_creator(client: AsyncClient, session_maker):
     payload = {
         "category": "craft",
         "location": "Incheon",
-        "start_time": "2025-12-13",
         "duration_minutes": 80,
         "capacity": 9,
-        "notes": "Materials included",
+        "years_of_experience": "7y",
+        "job_description": "Crafter",
+        "materials": "Wood, glue",
+        "price_per_person": "$40",
+        "template": "Craft template",
     }
 
     create_res = await client.post(

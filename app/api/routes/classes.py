@@ -21,10 +21,13 @@ class ClassBase(BaseModel):
 
     category: str
     location: str
-    start_time: str
     duration_minutes: int
     capacity: int
-    notes: str | None = None
+    years_of_experience: str
+    job_description: str
+    materials: str
+    price_per_person: str
+    template: str | None = None
 
 
 class ClassCreate(ClassBase):
@@ -61,10 +64,13 @@ async def create_class(
         creator_id=current_user.id,
         category=payload.category,
         location=payload.location,
-        start_time=payload.start_time,
         duration_minutes=payload.duration_minutes,
         capacity=payload.capacity,
-        notes=payload.notes,
+        years_of_experience=payload.years_of_experience,
+        job_description=payload.job_description,
+        materials=payload.materials,
+        price_per_person=payload.price_per_person,
+        template=payload.template,
     )
 
     db.add(new_class)
@@ -209,10 +215,13 @@ class ClassUpdate(BaseModel):
 
     category: str | None = None
     location: str | None = None
-    start_time: str | None = None
     duration_minutes: int | None = None
     capacity: int | None = None
-    notes: str | None = None
+    years_of_experience: str | None = None
+    job_description: str | None = None
+    materials: str | None = None
+    price_per_person: str | None = None
+    template: str | None = None
 
 
 @router.put("/{class_id}", response_model=ClassResponse)
@@ -321,10 +330,13 @@ class ClassInfoResponse(BaseModel):
 
     category: str
     location: str
-    start_time: str
     duration_minutes: int
     capacity: int
-    notes: str | None
+    years_of_experience: str
+    job_description: str
+    materials: str
+    price_per_person: str
+    template: str | None
 
 
 class ClassEnrollmentResponse(BaseModel):
@@ -389,10 +401,13 @@ async def list_my_classes_enrollments(
             "class_info": {
                 "category": cls.category,
                 "location": cls.location,
-                "start_time": cls.start_time,
                 "duration_minutes": cls.duration_minutes,
                 "capacity": cls.capacity,
-                "notes": cls.notes,
+                "years_of_experience": cls.years_of_experience,
+                "job_description": cls.job_description,
+                "materials": cls.materials,
+                "price_per_person": cls.price_per_person,
+                "template": cls.template,
             },
             "enrollments": enrollment_with_users,
         })

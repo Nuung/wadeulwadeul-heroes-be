@@ -32,23 +32,177 @@ ON CONFLICT (id) DO NOTHING;
 -- ============================================
 
 -- Kim Seon-saeng의 클래스들
-INSERT INTO app.classes (id, creator_id, category, location, start_time, duration_minutes, capacity, notes, created_at, updated_at) VALUES
-    ('650e8400-e29b-41d4-a716-446655440001', '550e8400-e29b-41d4-a716-446655440001', 'cooking', 'Seoul Gangnam', '2025-12-10 14:00', 120, 10, '한식 요리 기초 - 재료 제공', NOW(), NOW()),
-    ('650e8400-e29b-41d4-a716-446655440002', '550e8400-e29b-41d4-a716-446655440001', 'baking', 'Seoul Hongdae', '2025-12-15 10:00', 180, 8, '빵 만들기 - 앞치마 지참', NOW(), NOW()),
-    ('650e8400-e29b-41d4-a716-446655440003', '550e8400-e29b-41d4-a716-446655440001', 'kimchi', 'Seoul Jongno', '2025-12-20 13:00', 150, 15, '김치 담그기 - 용기 제공', NOW(), NOW())
+INSERT INTO app.classes (
+    id,
+    creator_id,
+    category,
+    location,
+    duration_minutes,
+    capacity,
+    years_of_experience,
+    job_description,
+    materials,
+    price_per_person,
+    template,
+    created_at,
+    updated_at
+) VALUES
+    (
+        '650e8400-e29b-41d4-a716-446655440001',
+        '550e8400-e29b-41d4-a716-446655440001',
+        'cooking',
+        'Seoul Gangnam',
+        120,
+        10,
+        '15y',
+        'Korean cuisine instructor',
+        'Rice, vegetables, seasoning',
+        '50000',
+        '한식 요리 기초 - 재료 제공',
+        NOW(),
+        NOW()
+    ),
+    (
+        '650e8400-e29b-41d4-a716-446655440002',
+        '550e8400-e29b-41d4-a716-446655440001',
+        'baking',
+        'Seoul Hongdae',
+        180,
+        8,
+        '12y',
+        'Baker',
+        'Flour, butter, sugar',
+        '65000',
+        '빵 만들기 - 앞치마 지참',
+        NOW(),
+        NOW()
+    ),
+    (
+        '650e8400-e29b-41d4-a716-446655440003',
+        '550e8400-e29b-41d4-a716-446655440001',
+        'kimchi',
+        'Seoul Jongno',
+        150,
+        15,
+        '20y',
+        'Fermentation specialist',
+        'Cabbage, chili flakes, salt',
+        '40000',
+        '김치 담그기 - 용기 제공',
+        NOW(),
+        NOW()
+    )
 ON CONFLICT (id) DO NOTHING;
 
 -- Park Myung-in의 클래스들
-INSERT INTO app.classes (id, creator_id, category, location, start_time, duration_minutes, capacity, notes, created_at, updated_at) VALUES
-    ('650e8400-e29b-41d4-a716-446655440011', '550e8400-e29b-41d4-a716-446655440002', 'pottery', 'Busan Haeundae', '2025-12-12 15:00', 180, 6, '도자기 만들기 - 초보 환영', NOW(), NOW()),
-    ('650e8400-e29b-41d4-a716-446655440012', '550e8400-e29b-41d4-a716-446655440002', 'painting', 'Busan Seomyeon', '2025-12-18 11:00', 120, 12, '수채화 기초 - 재료 제공', NOW(), NOW()),
-    ('650e8400-e29b-41d4-a716-446655440013', '550e8400-e29b-41d4-a716-446655440002', 'calligraphy', 'Busan Gwangalli', '2025-12-22 14:00', 90, 10, '서예 입문 - 붓 지참', NOW(), NOW())
+INSERT INTO app.classes (
+    id,
+    creator_id,
+    category,
+    location,
+    duration_minutes,
+    capacity,
+    years_of_experience,
+    job_description,
+    materials,
+    price_per_person,
+    template,
+    created_at,
+    updated_at
+) VALUES
+    (
+        '650e8400-e29b-41d4-a716-446655440011',
+        '550e8400-e29b-41d4-a716-446655440002',
+        'pottery',
+        'Busan Haeundae',
+        180,
+        6,
+        '18y',
+        'Ceramic artist',
+        'Clay, wheel, glaze',
+        '70000',
+        '도자기 만들기 - 초보 환영',
+        NOW(),
+        NOW()
+    ),
+    (
+        '650e8400-e29b-41d4-a716-446655440012',
+        '550e8400-e29b-41d4-a716-446655440002',
+        'painting',
+        'Busan Seomyeon',
+        120,
+        12,
+        '10y',
+        'Watercolorist',
+        'Paper, brushes, palette',
+        '45000',
+        '수채화 기초 - 재료 제공',
+        NOW(),
+        NOW()
+    ),
+    (
+        '650e8400-e29b-41d4-a716-446655440013',
+        '550e8400-e29b-41d4-a716-446655440002',
+        'calligraphy',
+        'Busan Gwangalli',
+        90,
+        10,
+        '22y',
+        'Calligrapher',
+        'Brush, ink, paper',
+        '35000',
+        '서예 입문 - 붓 지참',
+        NOW(),
+        NOW()
+    )
 ON CONFLICT (id) DO NOTHING;
 
 -- Lee Jang-in의 클래스들
-INSERT INTO app.classes (id, creator_id, category, location, start_time, duration_minutes, capacity, notes, created_at, updated_at) VALUES
-    ('650e8400-e29b-41d4-a716-446655440021', '550e8400-e29b-41d4-a716-446655440003', 'gardening', 'Incheon Songdo', '2025-12-14 10:00', 120, 15, '텃밭 가꾸기 - 장갑 지참', NOW(), NOW()),
-    ('650e8400-e29b-41d4-a716-446655440022', '550e8400-e29b-41d4-a716-446655440003', 'woodworking', 'Incheon Bupyeong', '2025-12-25 13:00', 180, 8, '목공예 기초 - 안전장비 제공', NOW(), NOW())
+INSERT INTO app.classes (
+    id,
+    creator_id,
+    category,
+    location,
+    duration_minutes,
+    capacity,
+    years_of_experience,
+    job_description,
+    materials,
+    price_per_person,
+    template,
+    created_at,
+    updated_at
+) VALUES
+    (
+        '650e8400-e29b-41d4-a716-446655440021',
+        '550e8400-e29b-41d4-a716-446655440003',
+        'gardening',
+        'Incheon Songdo',
+        120,
+        15,
+        '17y',
+        'Urban gardener',
+        'Seeds, soil, gloves',
+        '30000',
+        '텃밭 가꾸기 - 장갑 지참',
+        NOW(),
+        NOW()
+    ),
+    (
+        '650e8400-e29b-41d4-a716-446655440022',
+        '550e8400-e29b-41d4-a716-446655440003',
+        'woodworking',
+        'Incheon Bupyeong',
+        180,
+        8,
+        '25y',
+        'Woodcraft expert',
+        'Wood, glue, safety gear',
+        '80000',
+        '목공예 기초 - 안전장비 제공',
+        NOW(),
+        NOW()
+    )
 ON CONFLICT (id) DO NOTHING;
 
 -- ============================================

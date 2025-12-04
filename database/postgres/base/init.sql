@@ -42,10 +42,13 @@ CREATE TABLE IF NOT EXISTS app.classes (
     creator_id UUID NOT NULL,
     category VARCHAR(255) NOT NULL,
     location VARCHAR(255) NOT NULL,
-    start_time VARCHAR(100) NOT NULL,
     duration_minutes INT NOT NULL,
     capacity INT NOT NULL,
-    notes TEXT,
+    years_of_experience VARCHAR(50) NOT NULL,
+    job_description VARCHAR(255) NOT NULL,
+    materials TEXT NOT NULL,
+    price_per_person VARCHAR(50) NOT NULL,
+    template TEXT,
     created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
