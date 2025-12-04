@@ -12,12 +12,6 @@ class Settings(BaseSettings):
     debug: bool = False
     api_prefix: str = "/api/v1"
 
-    # API documentation settings
-    enable_docs: bool = True
-    docs_url: str = "/api/docs"
-    redoc_url: str = "/api/redoc"
-    openapi_url: str = "/api/openapi.json"
-
     # Database settings
     db_host: str = "postgres.goormthon-5.svc.cluster.local"
     db_port: int = 5432

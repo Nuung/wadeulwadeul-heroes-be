@@ -11,9 +11,9 @@ app = FastAPI(
     title=settings.app_name,
     version=settings.app_version,
     debug=settings.debug,
-    docs_url=settings.docs_url if settings.enable_docs else None,
-    redoc_url=settings.redoc_url if settings.enable_docs else None,
-    openapi_url=settings.openapi_url if settings.enable_docs else None,
+    docs_url="/api/docs",
+    redoc_url="/api/redoc",
+    openapi_url="/api/openapi.json",
 )
 
 # CORS middleware configuration

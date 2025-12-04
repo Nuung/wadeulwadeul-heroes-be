@@ -5,15 +5,14 @@ metadata:
   namespace: goormthon-5
   annotations:
     kubernetes.io/ingress.class: "nginx"
-    nginx.ingress.kubernetes.io/rewrite-target: /$2
     nginx.ingress.kubernetes.io/ssl-redirect: "false"
 spec:
   rules:
   - host: goormthon-5.goorm.training
     http:
       paths:
-      - path: /api(/|$)(.*)
-        pathType: ImplementationSpecific
+      - path: /
+        pathType: Prefix
         backend:
           service:
             name: backend-service
