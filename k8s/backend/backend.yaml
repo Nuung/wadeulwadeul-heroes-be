@@ -27,7 +27,7 @@ spec:
       # Run migrations before starting the app
       initContainers:
       - name: run-migrations
-        image: 837126493345.dkr.ecr.ap-northeast-2.amazonaws.com/goormthon-5/backend:build-19
+        image: 837126493345.dkr.ecr.ap-northeast-2.amazonaws.com/goormthon-5/backend:build-20
         command: ["alembic", "upgrade", "head"]
         envFrom:
         - configMapRef:
@@ -54,7 +54,7 @@ spec:
             cpu: "200m"
       containers:
       - name: backend
-        image: 837126493345.dkr.ecr.ap-northeast-2.amazonaws.com/goormthon-5/backend:build-19
+        image: 837126493345.dkr.ecr.ap-northeast-2.amazonaws.com/goormthon-5/backend:build-20
         imagePullPolicy: Always
         ports:
         - name: http
