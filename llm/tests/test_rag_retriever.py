@@ -313,7 +313,7 @@ class TestRAGRetrieverLogging:
         max_dist = max(distances)
 
         # 로그에 최소/최대 거리가 포함되어 있는지 확인
-        log_messages = " ".join(record.message for record in caplog.records)
+        _ = " ".join(record.message for record in caplog.records)
         # 거리값이 로그에 나타나는지 확인 (소수점 반올림 고려)
         assert any(
             "거리" in record.message for record in caplog.records
@@ -338,7 +338,7 @@ class TestRAGRetrieverLogging:
         results = retrieve(query, top_k, str(index_path), str(metadata_path))
 
         # Then: 로그에 상위 결과의 title이 포함되어야 함
-        log_messages = " ".join(record.message for record in caplog.records)
+        _ = " ".join(record.message for record in caplog.records)
 
         # 최소한 첫 번째 결과의 title이 로그에 나타나야 함
         first_title = results[0]["title"]

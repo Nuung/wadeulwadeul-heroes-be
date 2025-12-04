@@ -261,6 +261,7 @@ async def test_list_classes(client: AsyncClient, session_maker):
         },
     ]
 
+    created_class_ids = []
     for payload in payloads:
         res = await client.post(
             "/api/v1/classes",
@@ -268,6 +269,7 @@ async def test_list_classes(client: AsyncClient, session_maker):
             headers={"wadeulwadeul-user": str(old_user_id)},
         )
         assert res.status_code == 201
+        created_class_ids.append(res.json()["id"])
 
     res = await client.get(
         "/api/v1/classes?skip=0&limit=10",
@@ -277,11 +279,18 @@ async def test_list_classes(client: AsyncClient, session_maker):
     data = res.json()
     assert len(data) == 2
 
+    # 최신순 정렬 검증: 두 번째 생성된 클래스(cook)가 첫 번째에 와야 함
+    assert data[0]["id"] == created_class_ids[1], "최신 클래스가 첫 번째에 있어야 함"
+    assert data[0]["category"] == "cook"
+    assert data[1]["id"] == created_class_ids[0], "이전 클래스가 두 번째에 있어야 함"
+    assert data[1]["category"] == "art"
+
 
 @pytest.mark.anyio
 async def test_public_list_classes_with_pagination(client: AsyncClient, session_maker):
     old_user_id = await create_user(session_maker, "Old User", "old@example.com", UserType.OLD)
 
+    created_class_ids = []
     for idx in range(3):
         payload = {
             "category": f"cat-{idx}",
@@ -300,6 +309,7 @@ async def test_public_list_classes_with_pagination(client: AsyncClient, session_
             headers={"wadeulwadeul-user": str(old_user_id)},
         )
         assert res.status_code == 201
+        created_class_ids.append(res.json()["id"])
 
     # no auth header, pagination
     res = await client.get("/api/v1/classes/public?skip=0&limit=2")
@@ -307,10 +317,20 @@ async def test_public_list_classes_with_pagination(client: AsyncClient, session_
     data = res.json()
     assert len(data) == 2
 
+    # 최신순 정렬 검증: 가장 최근 생성된 클래스들이 먼저 와야 함
+    assert data[0]["id"] == created_class_ids[2], "가장 최신 클래스가 첫 번째에 있어야 함"
+    assert data[0]["category"] == "cat-2"
+    assert data[1]["id"] == created_class_ids[1], "두 번째로 최신 클래스가 두 번째에 있어야 함"
+    assert data[1]["category"] == "cat-1"
+
     res_next = await client.get("/api/v1/classes/public?skip=2&limit=2")
     assert res_next.status_code == 200
     data_next = res_next.json()
     assert len(data_next) == 1
+
+    # 페이지네이션 검증: 세 번째(가장 오래된) 클래스가 마지막 페이지에 있어야 함
+    assert data_next[0]["id"] == created_class_ids[0], "가장 오래된 클래스가 마지막에 있어야 함"
+    assert data_next[0]["category"] == "cat-0"
 
 
 @pytest.mark.anyio

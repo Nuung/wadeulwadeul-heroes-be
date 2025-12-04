@@ -88,10 +88,10 @@ async def list_classes(
     db: AsyncSession = Depends(get_db),
 ) -> list[OneDayClass]:
     """
-    원데이 클래스 목록 조회.
+    원데이 클래스 목록 조회 (최신순 정렬).
     """
     result = await db.execute(
-        select(OneDayClass).offset(skip).limit(limit)
+        select(OneDayClass).order_by(OneDayClass.created_at.desc()).offset(skip).limit(limit)
     )
     classes = result.scalars().all()
     return list(classes)
@@ -105,10 +105,10 @@ async def list_classes_public(
     db: AsyncSession = Depends(get_db),
 ) -> list[OneDayClass]:
     """
-    원데이 클래스 공개 목록 조회 (인증 선택).
+    원데이 클래스 공개 목록 조회 (인증 선택, 최신순 정렬).
     """
     result = await db.execute(
-        select(OneDayClass).offset(skip).limit(limit)
+        select(OneDayClass).order_by(OneDayClass.created_at.desc()).offset(skip).limit(limit)
     )
     classes = result.scalars().all()
     return list(classes)
@@ -363,9 +363,11 @@ async def list_my_classes_enrollments(
             detail="Only OLD users can view their class enrollments",
         )
 
-    # 2. 자신이 만든 클래스 조회
+    # 2. 자신이 만든 클래스 조회 (최신순 정렬)
     classes_result = await db.execute(
-        select(OneDayClass).where(OneDayClass.creator_id == current_user.id)
+        select(OneDayClass)
+        .where(OneDayClass.creator_id == current_user.id)
+        .order_by(OneDayClass.created_at.desc())
     )
     classes = classes_result.scalars().all()
 
