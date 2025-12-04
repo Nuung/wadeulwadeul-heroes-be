@@ -26,7 +26,7 @@ spec:
     spec:
       containers:
       - name: backend
-        image: 837126493345.dkr.ecr.ap-northeast-2.amazonaws.com/goormthon-5/backend:build-31
+        image: 837126493345.dkr.ecr.ap-northeast-2.amazonaws.com/goormthon-5/backend:build-32
         imagePullPolicy: Always
         ports:
         - name: http
