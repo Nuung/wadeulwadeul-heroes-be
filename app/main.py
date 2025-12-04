@@ -3,7 +3,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import health, heroes, users
+from app.api.routes import classes, health, heroes, users
 from app.core.auth import WadeulwadeulAuthMiddleware
 from app.core.config import settings
 
@@ -32,6 +32,7 @@ app.add_middleware(WadeulwadeulAuthMiddleware)
 app.include_router(health.router, prefix="/api")
 app.include_router(heroes.router, prefix="/api/v1")
 app.include_router(users.router, prefix="/api/v1")
+app.include_router(classes.router, prefix="/api/v1")
 
 
 @app.get("/api")

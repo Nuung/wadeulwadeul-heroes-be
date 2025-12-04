@@ -1,4 +1,4 @@
-"""Hero model for database."""
+"""One-day class model."""
 
 from datetime import UTC, datetime
 from typing import ClassVar
@@ -11,23 +11,22 @@ from app.core.config import settings
 from app.core.database import Base
 
 
-class Hero(Base):
-    """
-    Hero database model.
+class OneDayClass(Base):
+    """원데이 클래스 모델."""
 
-    Note: PostgreSQL uses 'app' schema, SQLite does not support schemas.
-    Reference: https://docs.sqlalchemy.org/en/20/dialects/sqlite.html
-    """
-
-    __tablename__ = "heroes"
+    __tablename__ = "classes"
     __table_args__: ClassVar[dict[str, str]] = (
         {"schema": "app"} if settings.environment == "production" else {}
     )
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
-    name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
-    description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    level: Mapped[int] = mapped_column(default=1, index=True)
+    creator_id: Mapped[UUID] = mapped_column(nullable=False)
+    category: Mapped[str] = mapped_column(String(255), nullable=False)
+    location: Mapped[str] = mapped_column(String(255), nullable=False)
+    start_time: Mapped[datetime] = mapped_column(nullable=False)
+    duration_minutes: Mapped[int] = mapped_column(nullable=False)
+    capacity: Mapped[int] = mapped_column(nullable=False)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         default=lambda: datetime.now(UTC).replace(tzinfo=None)
     )
@@ -37,5 +36,5 @@ class Hero(Base):
     )
 
     def __repr__(self) -> str:
-        """String representation of Hero."""
-        return f"<Hero(id={self.id}, name={self.name}, level={self.level})>"
+        """String representation of OneDayClass."""
+        return f"<OneDayClass(id={self.id}, category={self.category})>"

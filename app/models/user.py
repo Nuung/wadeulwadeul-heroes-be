@@ -1,7 +1,7 @@
 """User model for database."""
 
 import enum
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import ClassVar
 from uuid import UUID, uuid4
 
@@ -38,17 +38,22 @@ class User(Base):
         String(255), nullable=False, unique=True, index=True
     )
     type: Mapped[UserType] = mapped_column(
-        Enum(UserType, native_enum=False, length=10),
+        Enum(
+            UserType,
+            native_enum=False,
+            length=10,
+            values_callable=lambda obj: [e.value for e in obj],
+        ),
         nullable=False,
         default=UserType.YOUNG,
         index=True,
     )
     created_at: Mapped[datetime] = mapped_column(
-        default=lambda: datetime.now(timezone.utc).replace(tzinfo=None)
+        default=lambda: datetime.now(UTC).replace(tzinfo=None)
     )
     updated_at: Mapped[datetime] = mapped_column(
-        default=lambda: datetime.now(timezone.utc).replace(tzinfo=None),
-        onupdate=lambda: datetime.now(timezone.utc).replace(tzinfo=None),
+        default=lambda: datetime.now(UTC).replace(tzinfo=None),
+        onupdate=lambda: datetime.now(UTC).replace(tzinfo=None),
     )
 
     def __repr__(self) -> str:

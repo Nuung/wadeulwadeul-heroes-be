@@ -4,9 +4,6 @@
 -- Create additional database if needed
 -- CREATE DATABASE wadeulwadeul_dev;
 
--- Connect to the main database
-\c wadeulwadeul_db;
-
 -- Create extensions
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
@@ -48,6 +45,20 @@ CREATE TABLE IF NOT EXISTS app.users (
     updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Create one-day classes table
+CREATE TABLE IF NOT EXISTS app.classes (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    creator_id UUID NOT NULL,
+    category VARCHAR(255) NOT NULL,
+    location VARCHAR(255) NOT NULL,
+    start_time TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    duration_minutes INT NOT NULL,
+    capacity INT NOT NULL,
+    notes TEXT,
+    created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Create audit log table
 CREATE TABLE IF NOT EXISTS audit.logs (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -65,6 +76,9 @@ CREATE INDEX IF NOT EXISTS idx_heroes_level ON app.heroes(level);
 CREATE INDEX IF NOT EXISTS idx_users_email ON app.users(email);
 CREATE INDEX IF NOT EXISTS idx_users_name ON app.users(name);
 CREATE INDEX IF NOT EXISTS idx_users_type ON app.users(type);
+CREATE INDEX IF NOT EXISTS idx_classes_category ON app.classes(category);
+CREATE INDEX IF NOT EXISTS idx_classes_start_time ON app.classes(start_time);
+CREATE INDEX IF NOT EXISTS idx_classes_creator ON app.classes(creator_id);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_table ON audit.logs(table_name);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_changed_at ON audit.logs(changed_at);
 
@@ -78,6 +92,12 @@ CREATE TRIGGER update_heroes_updated_at
 DROP TRIGGER IF EXISTS update_users_updated_at ON app.users;
 CREATE TRIGGER update_users_updated_at
     BEFORE UPDATE ON app.users
+    FOR EACH ROW
+    EXECUTE FUNCTION app.update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_classes_updated_at ON app.classes;
+CREATE TRIGGER update_classes_updated_at
+    BEFORE UPDATE ON app.classes
     FOR EACH ROW
     EXECUTE FUNCTION app.update_updated_at_column();
 
