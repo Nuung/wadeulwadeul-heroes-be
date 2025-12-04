@@ -329,7 +329,11 @@ DEBUG=false
 ENABLE_DOCS=true
 DOCS_URL=/docs
 REDOC_URL=/redoc
+<<<<<<< HEAD
 OPENAPI_URL=/api/openapi.json
+=======
+OPENAPI_URL=/openapi.json
+>>>>>>> a441037 (feature: user model 추가와 심플 인증 미들웨어, 기본적인 API)
 
 # Database Configuration
 DB_HOST=localhost

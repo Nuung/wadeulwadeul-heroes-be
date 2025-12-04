@@ -13,6 +13,12 @@ data:
   API_PREFIX: "/api/v1"
   ENVIRONMENT: "production"
 
+  # API documentation settings
+  ENABLE_DOCS: "true"
+  DOCS_URL: "/docs"
+  REDOC_URL: "/redoc"
+  OPENAPI_URL: "/openapi.json"
+
   # Database settings
   DB_HOST: "postgres.goormthon-5.svc.cluster.local"
   DB_PORT: "5432"
