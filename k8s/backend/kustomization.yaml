@@ -6,7 +6,6 @@ namespace: goormthon-5
 resources:
 - backend.yaml
 - ingress.yaml
-- migration-job.yaml
 
 configMapGenerator:
 - name: backend-config
