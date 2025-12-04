@@ -45,7 +45,8 @@ spec:
               engine = create_async_engine(settings.database_url, future=True)
               async with engine.begin() as conn:
                   # Ensure search_path includes target schema
-                  await conn.execute(text("SET search_path TO :schema, public"), {"schema": schema})
+                  # Param 바인딩은 search_path에서 허용되지 않으므로 literal로 설정
+                  await conn.execute(text(f'SET search_path TO "{schema}", public'))
 
                   # Check whether alembic_version table exists
                   has_version_table = (
