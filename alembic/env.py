@@ -69,6 +69,7 @@ def process_revision_directives(_context, _revision, directives):
 def run_migrations_offline() -> None:
     """Run migrations in 'offline' mode."""
     url = config.get_main_option("sqlalchemy.url")
+    version_table_schema = "app" if settings.environment == "production" else None
     context.configure(
         url=url,
         target_metadata=target_metadata,
@@ -76,6 +77,7 @@ def run_migrations_offline() -> None:
         dialect_opts={"paramstyle": "named"},
         include_object=include_object,
         process_revision_directives=process_revision_directives,
+        version_table_schema=version_table_schema,
     )
 
     with context.begin_transaction():
@@ -84,11 +86,13 @@ def run_migrations_offline() -> None:
 
 def do_run_migrations(connection: Connection) -> None:
     """Run migrations with the given connection."""
+    version_table_schema = "app" if settings.environment == "production" else None
     context.configure(
         connection=connection,
         target_metadata=target_metadata,
         include_object=include_object,
         process_revision_directives=process_revision_directives,
+        version_table_schema=version_table_schema,
     )
 
     with context.begin_transaction():

@@ -28,87 +28,81 @@ spec:
         - |
           set -euo pipefail
 
-          python - <<'PY'
-          import asyncio
-          from sqlalchemy import text
-          from sqlalchemy.ext.asyncio import create_async_engine
+          ACTION=$(python - <<'PY'
+import asyncio
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import create_async_engine
 
-          from app.core.config import settings
+from app.core.config import settings
 
-          # Determine schema names
-          schema = "app" if settings.environment == "production" else "public"
-          version_table = f"{schema}.alembic_version" if schema != "public" else "alembic_version"
-          probe_table = f"{schema}.heroes" if schema != "public" else "heroes"
-          head_revision = "9b043473e2e7"
+schema = "app" if settings.environment == "production" else "public"
 
-          async def main() -> None:
-              engine = create_async_engine(settings.database_url, future=True)
-              async with engine.begin() as conn:
-                  # Ensure search_path includes target schema
-                  # Param 바인딩은 search_path에서 허용되지 않으므로 literal로 설정
-                  await conn.execute(text(f'SET search_path TO "{schema}", public'))
+async def decide() -> str:
+    engine = create_async_engine(settings.database_url, future=True)
+    try:
+        async with engine.begin() as conn:
+            await conn.execute(text(f'SET search_path TO "{schema}", public'))
 
-                  # Check whether alembic_version table exists
-                  has_version_table = (
-                      await conn.execute(text("SELECT to_regclass(:name)"), {"name": version_table})
-                  ).scalar()
+            version_exists = (
+                await conn.execute(
+                    text(
+                        """
+                        SELECT EXISTS (
+                            SELECT 1 FROM information_schema.tables
+                            WHERE table_schema = :schema AND table_name = 'alembic_version'
+                        )
+                        """
+                    ),
+                    {"schema": schema},
+                )
+            ).scalar()
 
-                  if has_version_table:
-                      # Check if version row already present
-                      version_row = (
-                          await conn.execute(
-                              text("SELECT version_num FROM " + version_table + " LIMIT 1")
-                          )
-                      ).scalar()
+            heroes_exists = (
+                await conn.execute(
+                    text(
+                        """
+                        SELECT EXISTS (
+                            SELECT 1 FROM information_schema.tables
+                            WHERE table_schema = :schema AND table_name = 'heroes'
+                        )
+                        """
+                    ),
+                    {"schema": schema},
+                )
+            ).scalar()
 
-                      if version_row:
-                          return
+            if version_exists:
+                version_row = (
+                    await conn.execute(
+                        text(
+                            f'SELECT version_num FROM "{schema}".alembic_version LIMIT 1'
+                            if schema != "public"
+                            else "SELECT version_num FROM alembic_version LIMIT 1"
+                        )
+                    )
+                ).scalar()
+                if version_row:
+                    return "upgrade"
+                if heroes_exists:
+                    return "stamp"
+                return "upgrade"
 
-                      has_probe_table = (
-                          await conn.execute(text("SELECT to_regclass(:name)"), {"name": probe_table})
-                      ).scalar()
+            if heroes_exists:
+                return "stamp"
+            return "upgrade"
+    finally:
+        await engine.dispose()
 
-                      if has_probe_table:
-                          print("Found existing schema with empty alembic_version; stamping to head.")
-                          await conn.execute(
-                              text(
-                                  "INSERT INTO "
-                                  + version_table
-                                  + " (version_num) VALUES (:rev) ON CONFLICT DO NOTHING"
-                              ),
-                              {"rev": head_revision},
-                          )
-                          return
+print(asyncio.run(decide()))
+PY
+)
 
-                  # If tables exist but version table is missing, stamp to head once
-                  has_probe_table = (
-                      await conn.execute(text("SELECT to_regclass(:name)"), {"name": probe_table})
-                  ).scalar()
+          echo "decided action: ${ACTION}"
 
-                  if has_probe_table:
-                      print("Found existing schema without alembic_version; stamping to head.")
-                      await conn.execute(text(f'CREATE SCHEMA IF NOT EXISTS "{schema}"'))
-                      await conn.execute(
-                          text(
-                              f"CREATE TABLE IF NOT EXISTS {version_table} ("
-                              "version_num VARCHAR(32) NOT NULL PRIMARY KEY)"
-                          )
-                      )
-                      await conn.execute(
-                          text(
-                              "INSERT INTO "
-                              + version_table
-                              + " (version_num) VALUES (:rev) ON CONFLICT DO NOTHING"
-                          ),
-                          {"rev": head_revision},
-                      )
-                  else:
-                      print("No existing schema detected; running migrations fresh.")
-
-              await engine.dispose()
-
-          asyncio.run(main())
-          PY
+          if [ "${ACTION}" = "stamp" ]; then
+            echo "Stamping existing schema to head 9b043473e2e7"
+            alembic stamp 9b043473e2e7
+          fi
 
           alembic upgrade head
         env:
