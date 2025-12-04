@@ -37,8 +37,8 @@ spec:
 
           # Determine schema names
           schema = "app" if settings.environment == "production" else "public"
-          version_table = f'"{schema}".alembic_version' if schema != "public" else "alembic_version"
-          probe_table = f'"{schema}".heroes' if schema != "public" else "heroes"
+          version_table = f"{schema}.alembic_version" if schema != "public" else "alembic_version"
+          probe_table = f"{schema}.heroes" if schema != "public" else "heroes"
           head_revision = "9b043473e2e7"
 
           async def main() -> None:
@@ -56,7 +56,9 @@ spec:
                   if has_version_table:
                       # Check if version row already present
                       version_row = (
-                          await conn.execute(text(f"SELECT version_num FROM {version_table} LIMIT 1"))
+                          await conn.execute(
+                              text("SELECT version_num FROM " + version_table + " LIMIT 1")
+                          )
                       ).scalar()
 
                       if version_row:
@@ -70,8 +72,9 @@ spec:
                           print("Found existing schema with empty alembic_version; stamping to head.")
                           await conn.execute(
                               text(
-                                  f"INSERT INTO {version_table} (version_num) "
-                                  "VALUES (:rev) ON CONFLICT DO NOTHING"
+                                  "INSERT INTO "
+                                  + version_table
+                                  + " (version_num) VALUES (:rev) ON CONFLICT DO NOTHING"
                               ),
                               {"rev": head_revision},
                           )
@@ -93,8 +96,9 @@ spec:
                       )
                       await conn.execute(
                           text(
-                              f"INSERT INTO {version_table} (version_num) "
-                              "VALUES (:rev) ON CONFLICT DO NOTHING"
+                              "INSERT INTO "
+                              + version_table
+                              + " (version_num) VALUES (:rev) ON CONFLICT DO NOTHING"
                           ),
                           {"rev": head_revision},
                       )
