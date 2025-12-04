@@ -83,6 +83,7 @@ async def generate_experience_plan(
         model="gpt-4o",
         messages=messages,
         temperature=0,
+        response_format={"type": "json_object"},
     )
 
     template_raw = completion.choices[0].message.content
