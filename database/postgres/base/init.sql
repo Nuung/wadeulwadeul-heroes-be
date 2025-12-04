@@ -34,8 +34,8 @@ CREATE TABLE IF NOT EXISTS app.heroes (
     name VARCHAR(255) NOT NULL,
     description TEXT,
     level INT DEFAULT 1,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Create users table
@@ -44,8 +44,8 @@ CREATE TABLE IF NOT EXISTS app.users (
     name VARCHAR(255) NOT NULL,
     email VARCHAR(255) NOT NULL UNIQUE,
     type VARCHAR(10) NOT NULL DEFAULT 'young' CHECK (type IN ('young', 'old')),
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Create audit log table
@@ -62,6 +62,7 @@ CREATE TABLE IF NOT EXISTS audit.logs (
 -- Create indexes
 CREATE INDEX IF NOT EXISTS idx_heroes_name ON app.heroes(name);
 CREATE INDEX IF NOT EXISTS idx_heroes_level ON app.heroes(level);
+CREATE INDEX IF NOT EXISTS idx_users_email ON app.users(email);
 CREATE INDEX IF NOT EXISTS idx_users_name ON app.users(name);
 CREATE INDEX IF NOT EXISTS idx_users_type ON app.users(type);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_table ON audit.logs(table_name);
