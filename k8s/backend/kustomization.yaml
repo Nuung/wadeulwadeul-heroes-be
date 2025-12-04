@@ -15,3 +15,6 @@ configMapGenerator:
 commonLabels:
   app: backend
   team: goormthon-5
+
+generatorOptions:
+  disableNameSuffixHash: true
