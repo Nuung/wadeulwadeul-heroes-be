@@ -12,8 +12,11 @@ class Settings(BaseSettings):
     debug: bool = False
     api_prefix: str = "/api/v1"
 
-    # Environment (local or production)
-    environment: str = "local"
+    # API documentation settings
+    enable_docs: bool = True
+    docs_url: str = "/api/docs"
+    redoc_url: str = "/api/redoc"
+    openapi_url: str = "/api/openapi.json"
 
     # Database settings (PostgreSQL - only used in production)
     db_host: str = ""

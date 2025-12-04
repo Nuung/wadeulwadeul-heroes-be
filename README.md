@@ -316,32 +316,6 @@ uv run ruff check app/ --fix && uv run ruff format app/
 2. Define your router and endpoints
 3. Include the router in `app/main.py`
 
-### Environment Variables
-
-Create a `.env` file in the root directory:
-```env
-# Application Configuration
-APP_NAME=Wadeulwadeul Heroes API
-APP_VERSION=0.1.0
-DEBUG=false
-
-# API Documentation (enabled by default)
-ENABLE_DOCS=true
-DOCS_URL=/docs
-REDOC_URL=/redoc
-<<<<<<< HEAD
-OPENAPI_URL=/api/openapi.json
-=======
-OPENAPI_URL=/openapi.json
->>>>>>> a441037 (feature: user model 추가와 심플 인증 미들웨어, 기본적인 API)
-
-# Database Configuration
-DB_HOST=localhost
-DB_PORT=5432
-DB_USER=postgres
-DB_PASSWORD=postgres123
-DB_NAME=wadeulwadeul_db
-```
 
 ## References
 
