@@ -35,3 +35,6 @@ patchesStrategicMerge:
             limits:
               memory: "2Gi"
               cpu: "2000m"
+
+generatorOptions:
+  disableNameSuffixHash: true
