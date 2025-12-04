@@ -85,7 +85,7 @@ The API will be available at `http://localhost:8000`
 Once the server is running, visit:
 - Swagger UI: `http://localhost:8000/docs`
 - ReDoc: `http://localhost:8000/redoc`
-- OpenAPI Schema: `http://localhost:8000/openapi.json`
+- OpenAPI Schema: `http://localhost:8000/api/openapi.json`
 
 **Production:**
 - Swagger UI: `http://goormthon-5.goorm.training/api/docs`
@@ -332,7 +332,7 @@ DEBUG=false
 ENABLE_DOCS=true
 DOCS_URL=/docs
 REDOC_URL=/redoc
-OPENAPI_URL=/openapi.json
+OPENAPI_URL=/api/openapi.json
 
 # Database Configuration
 DB_HOST=localhost

@@ -14,9 +14,9 @@ class Settings(BaseSettings):
 
     # API documentation settings
     enable_docs: bool = True
-    docs_url: str = "/docs"
-    redoc_url: str = "/redoc"
-    openapi_url: str = "/openapi.json"
+    docs_url: str = "/api/docs"
+    redoc_url: str = "/api/redoc"
+    openapi_url: str = "/api/openapi.json"
 
     # Database settings
     db_host: str = "postgres.goormthon-5.svc.cluster.local"
