@@ -1,334 +1,91 @@
 # Wadeulwadeul Heroes Backend
 
-FastAPI backend application for wadeulwadeul-heroes project.
+> 시니어가 운영하는 원데이 클래스와 LLM 기반 체험 기획을 제공하는 FastAPI 백엔드입니다.
+- gpt-4o로 체험 기획 템플릿, 재료/단계 추천을 생성
+- 선택적 RAG(visitjeju 데이터 FAISS 인덱스) 컨텍스트 주입, 실패 시 자동 폴백
+- OLD/ YOUNG 역할 기반 클래스 생성·수정·신청 흐름
 
-## Tech Stack
+## 기술 스택
+- Python 3.13, FastAPI, SQLAlchemy(Async)
+- OpenAI API (gpt-4o, text-embedding-3-small), FAISS
+- 패키지/실행: uv, Uvicorn
+- 품질: Ruff, Pytest
 
-- **Python**: 3.13
-- **Framework**: FastAPI
-- **Package Manager**: uv
-- **Server**: Uvicorn
-- **Database**: PostgreSQL 16
-- **ORM**: SQLAlchemy 2.0 (Async)
-- **Linter/Formatter**: Ruff
-
-## Project Structure
-
+## 주요 폴더
 ```
-.
-├── app/
-│   ├── __init__.py
-│   ├── main.py                 # FastAPI application entry point
-│   ├── api/
-│   │   ├── __init__.py
-│   │   └── routes/
-│   │       ├── __init__.py
-│   │       ├── health.py       # Health check endpoints
-│   │       ├── heroes.py       # Heroes CRUD endpoints
-│   │       └── users.py        # Users CRUD endpoints
-│   ├── core/
-│   │   ├── __init__.py
-│   │   ├── config.py           # Application configuration
-│   │   ├── database.py         # Database session management
-│   │   └── auth.py             # Authentication middleware & dependencies
-│   └── models/
-│       ├── __init__.py
-│       ├── hero.py             # Hero database model
-│       └── user.py             # User database model
-├── database/
-│   ├── README.md               # Database deployment guide
-│   └── postgres/
-│       ├── base/               # Base PostgreSQL manifests
-│       └── overlays/           # Production overlays
-├── k8s/
-│   ├── DEPLOYMENT.md           # 배포 가이드 (Jenkins & 수동)
-│   ├── JENKINS.md              # Jenkins 설정 가이드
-│   └── backend/
-│       ├── namespace.yaml      # Namespace definition
-│       ├── backend.yaml        # Deployment & Service
-│       ├── ingress.yaml        # Ingress configuration
-│       ├── kustomization.yaml  # Kustomize manifest
-│       └── config/
-│           ├── configmap.yaml  # ConfigMap for environment variables
-│           └── secret.yaml     # Secret for sensitive data
-├── Dockerfile
-├── .dockerignore
-├── Jenkinsfile                # Jenkins CI/CD pipeline
-├── pyproject.toml
-└── README.md
+app/
+  main.py
+  api/routes/{health,heroes,users,classes,experience_plan}.py
+  core/{config,database,auth}.py
+  libs/openai_client.py
+  models/{user,class_,enrollment,hero}.py
+  prompts/*.py
+llm/              # RAG 인덱스, 검색 유틸
+k8s/backend/*.yaml
+tests/*.py
+scripts/ci-checks.sh
+Dockerfile, plan.md, AGENTS.md, pyproject.toml
 ```
 
-## Getting Started
+## 빠른 시작
+1) 요구 사항: Python 3.13, `uv`, `OPENAI_API_KEY`  
+   - RAG을 쓰려면 `llm/output/visitjeju_faiss.index`, `llm/output/visitjeju_metadata.json`이 필요합니다. 없으면 기본 프롬프트로만 동작합니다.
+2) 의존성 설치: `uv sync`
+3) 실행:  
+   ```bash
+   OPENAI_API_KEY=... uv run uvicorn app.main:app --reload
+   ```
+   - 로컬(`ENVIRONMENT=local`)은 SQLite `wadeulwadeul_local.db`를 사용합니다.
+   - 프로덕션(`ENVIRONMENT=production`)에서는 `DB_HOST/DB_USER/DB_PASSWORD/DB_NAME` 등으로 PostgreSQL을 설정하세요.
+4) 문서: `http://localhost:8000/api/docs` (`/api/redoc`, `/api/openapi.json`도 제공)
 
-### Prerequisites
+## 환경 변수
+- `OPENAI_API_KEY` (필수): OpenAI Chat/Embedding 키
+- `ENVIRONMENT` (기본 local): production일 때 PostgreSQL URL을 조립
+- `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `DB_ECHO` 등: prod용 DB 설정
+- `docs_url`, `redoc_url`, `openapi_url`은 `app/core/config.py` 기본값(`/api/...`)을 사용
 
-- [uv](https://docs.astral.sh/uv/) installed
-- Python 3.13+
-- Docker (for containerized deployment)
+## 인증
+- 헤더 `wadeulwadeul-user: <user-uuid>` 로 사용자 UUID를 전달합니다.
+- 미들웨어가 UUID를 DB에서 조회해 `request.state.user`에 저장합니다.
+- 일부 엔드포인트는 선택적(auth optional), 클래스/신청/내 정보 조회는 필수입니다.
 
-### Local Development
+## API 요약
+### 헬스체크
+- `GET /api/health/ping` (200 반환)
 
-1. Install dependencies:
-```bash
-uv sync
-```
+### LLM 기반 체험 기획 (모델: gpt-4o, temperature 0)
+- `POST /api/v1/experience-plan`  
+  - 요청: `category`, `years_of_experience`, `job_description`, `materials`, `location`, `duration_minutes`, `capacity`, `price_per_person` (문자열)  
+  - 응답: JSON 템플릿(체험 제목/소개/난이도/로드맵/오프닝/준비 단계/핵심 체험/마무리/준비물/특별 안내사항)  
+  - RAG retriever가 주입되면 `<reference_context>...</reference_context>` 블록이 메시지에 추가됩니다.
+- `POST /api/v1/experience-plan/materials-suggestion`  
+  - 요청: `category`, `years_of_experience`, `job_description`  
+  - 응답: `{"suggestion": "<재료 추천 텍스트>"}`
+- `POST /api/v1/experience-plan/steps-suggestion`  
+  - 요청: `category`, `years_of_experience`, `job_description`, `materials`  
+  - 응답: `{"suggestion": "<단계별 안내 텍스트>"}`
+- RAG 로딩 실패나 예외 발생 시 컨텍스트 없이 기본 프롬프트로 동작합니다.
 
-2. Run the application:
-```bash
-uv run uvicorn app.main:app --reload
-```
+### 클래스/신청 (역할 기반)
+- `POST /api/v1/classes` (OLD만) 원데이 클래스 생성
+- `GET /api/v1/classes` (인증 필요) / `GET /api/v1/classes/public` (공개 목록)
+- `GET /api/v1/classes/{id}` 단건 조회, `PUT`/`DELETE /api/v1/classes/{id}`는 생성자(OLD)만 허용
+- `POST /api/v1/classes/{id}/enroll` (YOUNG만) 신청, 본인/중복 검사
+- `GET /api/v1/classes/enrollments/me` 내 신청 목록
+- `DELETE /api/v1/classes/enrollments/{id}` 내 신청 취소
+- `GET /api/v1/classes/my-classes/enrollments` (OLD) 내가 만든 클래스들의 신청 현황 조회
 
-The API will be available at `http://localhost:8000`
+### 사용자/샘플 리소스
+- Users: `/api/v1/users` CRUD, `GET /api/v1/users/me`로 현재 사용자 확인
+- Heroes: `/api/v1/heroes` CRUD (데모용)
 
-### API Documentation
+## 테스트/품질
+- 모든 테스트 실행: `uv run pytest`
+- 린트/포맷: `uv run ruff check .` (필요 시 `ruff format`)
 
-Once the server is running, visit:
-- Swagger UI: `http://localhost:8000/docs`
-- ReDoc: `http://localhost:8000/redoc`
-- OpenAPI Schema: `http://localhost:8000/api/openapi.json`
-
-**Production:**
-- Swagger UI: `http://goormthon-5.goorm.training/api/docs`
-- ReDoc: `http://goormthon-5.goorm.training/api/redoc`
-
-API documentation is enabled by default in all environments. You can disable it by setting `ENABLE_DOCS=false` in your environment variables.
-
-**Important:** Production uses `OPENAPI_URL=/api/openapi.json` in ConfigMap to match the Ingress path routing.
-
-### Authentication (Hackathon Mode)
-
-This project uses a simple header-based authentication for hackathon purposes:
-
-**Header:** `wadeulwadeul-user`
-**Value:** User's email address
-
-The middleware automatically loads the user from the database based on the email provided in the header.
-
-**Usage Example:**
-```bash
-# Create a user first
-curl -X POST http://localhost:8000/api/v1/users \
-  -H "Content-Type: application/json" \
-  -d '{"name": "John Doe", "email": "john@example.com"}'
-
-# Access authenticated endpoint
-curl http://localhost:8000/api/v1/users/me \
-  -H "wadeulwadeul-user: john@example.com"
-```
-
-**For Developers:**
-- Use `get_current_user` dependency for required authentication (returns 401 if not authenticated)
-- Use `get_current_user_optional` dependency for optional authentication (returns None if not authenticated)
-
-```python
-from app.core.auth import get_current_user
-
-@router.get("/protected")
-async def protected_endpoint(user: User = Depends(get_current_user)):
-    return {"message": f"Hello, {user.name}!"}
-```
-
-### Available Endpoints
-
-**Health:**
-- `GET /` - Root endpoint
-- `GET /api/health/ping` - Health check endpoint
-
-**Heroes API:**
-- `GET /api/v1/heroes` - List all heroes
-- `GET /api/v1/heroes/{id}` - Get hero by ID
-- `POST /api/v1/heroes` - Create new hero
-- `DELETE /api/v1/heroes/{id}` - Delete hero
-
-**Users API:**
-- `GET /api/v1/users/me` - Get current authenticated user (requires auth)
-- `GET /api/v1/users` - List all users
-- `GET /api/v1/users/{id}` - Get user by ID
-- `POST /api/v1/users` - Create new user
-- `PUT /api/v1/users/{id}` - Update user
-- `DELETE /api/v1/users/{id}` - Delete user
-
-## PostgreSQL Database
-
-### Local Development with PostgreSQL
-
-For local development, you can use Docker to run PostgreSQL:
-
-```bash
-# Run PostgreSQL container
-docker run -d \
-  --name postgres \
-  -e POSTGRES_USER=postgres \
-  -e POSTGRES_PASSWORD=postgres123 \
-  -e POSTGRES_DB=wadeulwadeul_db \
-  -p 5432:5432 \
-  postgres:16-alpine
-
-# Run initialization script (optional)
-docker exec -i postgres psql -U postgres -d wadeulwadeul_db < database/postgres/base/init.sql
-
-# Update .env file
-cat > .env << EOF
-DB_HOST=localhost
-DB_PORT=5432
-DB_USER=postgres
-DB_PASSWORD=postgres123
-DB_NAME=wadeulwadeul_db
-EOF
-
-# Start the application
-uv run uvicorn app.main:app --reload
-```
-
-For detailed PostgreSQL setup and management, see [database/README.md](database/README.md)
-
-## Docker
-
-### Build the image:
+## Docker (선택)
 ```bash
 docker build -t wadeulwadeul-heroes-be .
+docker run -p 8000:8000 -e OPENAI_API_KEY=... wadeulwadeul-heroes-be
 ```
-
-### Run the container:
-```bash
-docker run -p 8000:8000 wadeulwadeul-heroes-be
-```
-
-### Health Check
-
-The Docker container includes a health check that pings `/api/health/ping` every 30 seconds.
-
-## Kubernetes Deployment (AWS EKS)
-
-This project includes complete Kubernetes manifests for deploying to AWS EKS with Jenkins CI/CD.
-
-### 🚀 Deployment Methods
-
-#### Option 1: Jenkins (권장)
-
-**Jenkins를 통한 파라미터 기반 수동 배포:**
-
-1. Jenkins에서 **"Build with Parameters"** 클릭
-2. 배포 파라미터 설정:
-   - `IMAGE_TAG`: 배포할 이미지 태그 (예: `v1.0.0`, `latest`)
-   - `NAMESPACE`: 배포할 네임스페이스 (기본: `goormthon-5`)
-   - `REPLICAS`: Pod 레플리카 수 (1~5)
-   - `UPDATE_CONFIG`: ConfigMap/Secret 업데이트 여부
-   - `ENABLE_ROLLBACK`: 자동 롤백 활성화 여부
-3. **"Build"** 클릭하여 배포 시작
-
-자세한 내용은 [k8s/DEPLOYMENT.md](k8s/DEPLOYMENT.md)를 참고하세요.
-
-#### Option 2: 수동 배포
-
-1. **Configure AWS credentials:**
-   ```bash
-   # AWS CLI 설정
-   aws configure
-
-   # EKS 클러스터 kubeconfig 업데이트
-   aws eks update-kubeconfig --region ap-northeast-2 --name goormthon-cluster
-   ```
-
-2. **Build and push Docker image to ECR:**
-   ```bash
-   # Build image
-   docker build -t goormthon-5:latest .
-
-   # Tag for ECR
-   docker tag goormthon-5:latest 837126493345.dkr.ecr.ap-northeast-2.amazonaws.com/goormthon-5:latest
-
-   # Login to ECR
-   aws ecr get-login-password --region ap-northeast-2 | \
-       docker login --username AWS --password-stdin 837126493345.dkr.ecr.ap-northeast-2.amazonaws.com
-
-   # Push image
-   docker push 837126493345.dkr.ecr.ap-northeast-2.amazonaws.com/goormthon-5:latest
-   ```
-
-3. **Deploy to EKS:**
-   ```bash
-   # Create namespace (if not exists)
-   kubectl create namespace goormthon-5
-
-   # Deploy using Kustomize
-   kubectl apply -k k8s/backend/
-
-   # Check deployment status
-   kubectl rollout status deployment/backend-deployment -n goormthon-5
-   ```
-
-### Deployment Details
-
-- **Namespace**: `goormthon-5`
-- **ECR Registry**: `837126493345.dkr.ecr.ap-northeast-2.amazonaws.com`
-- **Image Name**: `goormthon-5`
-- **Ingress**: `http://goormthon-5.goorm.training/api/`
-- **CI/CD**: Jenkins (Parameterized Build)
-
-### Useful Kubectl Commands
-
-```bash
-# 전체 상태 확인
-kubectl get all -n goormthon-5
-
-# Pod 로그 확인
-kubectl logs -f -l app=backend -n goormthon-5
-
-# 배포 히스토리
-kubectl rollout history deployment/backend-deployment -n goormthon-5
-
-# Replicas 수 변경
-kubectl scale deployment/backend-deployment --replicas=3 -n goormthon-5
-```
-
-For detailed deployment instructions, see [k8s/DEPLOYMENT.md](k8s/DEPLOYMENT.md)
-
-## Development
-
-### Code Quality
-
-This project uses [Ruff](https://docs.astral.sh/ruff/) for linting and formatting.
-
-Check code with linter:
-```bash
-uv run ruff check app/
-```
-
-Auto-fix linting issues:
-```bash
-uv run ruff check app/ --fix
-```
-
-Format code:
-```bash
-uv run ruff format app/
-```
-
-Run both linting and formatting:
-```bash
-uv run ruff check app/ --fix && uv run ruff format app/
-```
-
-### Adding new routes
-
-1. Create a new route file in `app/api/routes/`
-2. Define your router and endpoints
-3. Include the router in `app/main.py`
-
-
-## References
-
-### Application Framework
-- [FastAPI Documentation](https://fastapi.tiangolo.com/)
-- [uv Documentation](https://docs.astral.sh/uv/)
-- [uv Docker Guide](https://docs.astral.sh/uv/guides/integration/docker/)
-- [Ruff Documentation](https://docs.astral.sh/ruff/)
-
-### Kubernetes & AWS
-- [AWS EKS Documentation](https://docs.aws.amazon.com/eks/latest/userguide/)
-- [kubectl Documentation](https://kubernetes.io/docs/reference/kubectl/)
-- [eksctl Documentation](https://eksctl.io/)
-- [Kustomize Documentation](https://kubectl.docs.kubernetes.io/guides/introduction/kustomize/)
-- [Amazon ECR Documentation](https://docs.aws.amazon.com/ecr/)
-- [GitHub Reference Repository](https://github.com/goorm-dev/9oormthon-k8s/tree/master/k8s/backend)
