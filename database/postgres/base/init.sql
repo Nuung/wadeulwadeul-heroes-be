@@ -1,3 +1,6 @@
+-- DROP SCHEMA IF EXISTS app CASCADE;
+-- DROP SCHEMA IF EXISTS audit CASCADE;
+-- DROP FUNCTION IF EXISTS app.update_updated_at_column();
 -- PostgreSQL initialization script aligned with application models
 -- Runs once when the database is first created
 
