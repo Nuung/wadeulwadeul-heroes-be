@@ -304,7 +304,7 @@ class UserInfoResponse(BaseModel):
 
     user_id: UUID
     name: str
-    email: str
+    email: str | None
 
 
 class EnrollmentWithUserResponse(BaseModel):

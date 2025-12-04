@@ -62,8 +62,10 @@ async def client(session_maker):
     app.dependency_overrides.clear()
 
 
-async def create_user(session_maker, name: str, email: str, user_type: UserType) -> UUID:
-    """테스트용 사용자 생성. UUID를 반환."""
+async def create_user(
+    session_maker, name: str, email: str | None, user_type: UserType
+) -> UUID:
+    """테스트용 사용자 생성. email 없이도 UUID 반환."""
     async with session_maker() as session:
         user = User(name=name, email=email, type=user_type)
         session.add(user)
@@ -169,6 +171,25 @@ async def test_old_user_can_view_their_class_enrollments(client: AsyncClient, se
     assert len(painting_class["enrollments"]) == 1
     assert painting_class["enrollments"][0]["user_info"]["name"] == "Young1"
     assert painting_class["enrollments"][0]["headcount"] == 3
+
+
+@pytest.mark.anyio
+async def test_old_user_sees_null_email_when_missing(client: AsyncClient, session_maker):
+    """email 없이 신청한 사용자의 email 필드는 null 로 반환."""
+    old_user_id = await create_user(session_maker, "Old User", "old@example.com", UserType.OLD)
+    young_user_id = await create_user(session_maker, "Young User", None, UserType.YOUNG)
+
+    clazz = await create_class_for_user(session_maker, old_user_id, "cooking", "Seoul")
+    await enroll_user_to_class(session_maker, young_user_id, clazz.id, "2025-12-19", 1)
+
+    res = await client.get(
+        "/api/v1/classes/my-classes/enrollments",
+        headers={"wadeulwadeul-user": str(old_user_id)},
+    )
+
+    assert res.status_code == 200
+    data = res.json()
+    assert data[0]["enrollments"][0]["user_info"]["email"] is None
 
 
 @pytest.mark.anyio
