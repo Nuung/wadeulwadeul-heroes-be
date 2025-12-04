@@ -34,8 +34,8 @@ class User(Base):
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
-    email: Mapped[str] = mapped_column(
-        String(255), nullable=False, unique=True, index=True
+    email: Mapped[str | None] = mapped_column(
+        String(255), nullable=True, unique=True, index=True
     )
     type: Mapped[UserType] = mapped_column(
         Enum(

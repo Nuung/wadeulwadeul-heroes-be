@@ -18,7 +18,7 @@ class UserCreate(BaseModel):
     """User creation schema."""
 
     name: str
-    email: EmailStr
+    email: EmailStr | None = None
     type: UserType = UserType.YOUNG
 
 
@@ -35,7 +35,7 @@ class UserResponse(BaseModel):
 
     id: UUID
     name: str
-    email: str
+    email: str | None
     type: UserType
 
     model_config = {"from_attributes": True}
@@ -46,7 +46,7 @@ async def get_current_user_info(current_user: User = Depends(get_current_user)) 
     """
     Get current authenticated user information.
 
-    Requires 'wadeulwadeul-user' header with user email.
+    Requires 'wadeulwadeul-user' header with user UUID.
 
     Args:
         current_user: Current authenticated user
@@ -55,7 +55,7 @@ async def get_current_user_info(current_user: User = Depends(get_current_user)) 
         Current user object
 
     Example:
-        curl -H "wadeulwadeul-user: user@example.com" http://localhost:8000/api/v1/users/me
+        curl -H "wadeulwadeul-user: <user-uuid>" http://localhost:8000/api/v1/users/me
     """
     return current_user
 

@@ -1,6 +1,7 @@
 """Authentication middleware and dependencies for hackathon project."""
 
 from typing import Any
+from uuid import UUID
 
 from fastapi import HTTPException, Request, status
 from sqlalchemy import select
@@ -17,31 +18,34 @@ class WadeulwadeulAuthMiddleware(BaseHTTPMiddleware):
     """
     Simple authentication middleware for hackathon.
 
-    Reads 'wadeulwadeul-user' header value (user email) and loads the user.
+    Reads 'wadeulwadeul-user' header value (user UUID) and loads the user.
     Stores the user in request.state.user for downstream access.
     """
 
     async def dispatch(self, request: Request, call_next: Any) -> Any:
         """Process the request and load user from header."""
-        user_email = request.headers.get(AUTH_HEADER_KEY)
+        user_uuid_str = request.headers.get(AUTH_HEADER_KEY)
 
         # Initialize user as None
         request.state.user = None
 
-        if user_email:
+        if user_uuid_str:
             # Create a new database session for this middleware
             async with AsyncSessionLocal() as session:
                 try:
+                    # Parse UUID from header
+                    user_uuid = UUID(user_uuid_str)
+
                     result = await session.execute(
-                        select(User).where(User.email == user_email)
+                        select(User).where(User.id == user_uuid)
                     )
                     user = result.scalar_one_or_none()
 
                     if user:
                         # Store user in request state
                         request.state.user = user
-                except Exception:
-                    # If any error occurs, just leave user as None
+                except (ValueError, Exception):
+                    # If UUID parsing fails or any error occurs, leave user as None
                     pass
 
         response = await call_next(request)
@@ -74,7 +78,7 @@ async def get_current_user(request: Request) -> User:
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Authentication required. Please provide '{AUTH_HEADER_KEY}' header with user email.",
+            detail=f"Authentication required. Please provide '{AUTH_HEADER_KEY}' header with user UUID.",
             headers={"WWW-Authenticate": "Bearer"},
         )
 

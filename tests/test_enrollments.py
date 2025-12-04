@@ -1,6 +1,5 @@
 import pytest
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.core import auth as auth_module
@@ -58,22 +57,23 @@ async def client(session_maker):
     app.dependency_overrides.clear()
 
 
-async def create_user(session_maker, name: str, email: str, user_type: UserType) -> None:
-    """테스트용 사용자 생성."""
+async def create_user(session_maker, name: str, email: str, user_type: UserType):
+    """테스트용 사용자 생성. UUID를 반환."""
     async with session_maker() as session:
         user = User(name=name, email=email, type=user_type)
         session.add(user)
+        await session.flush()
+        await session.refresh(user)
+        user_id = user.id
         await session.commit()
+        return user_id
 
 
-async def create_class(session_maker, creator_email: str, creator_type: UserType) -> OneDayClass:
-    """테스트용 클래스 생성."""
-    await create_user(session_maker, "Creator", creator_email, creator_type)
+async def create_class(session_maker, creator_id) -> OneDayClass:
+    """테스트용 클래스 생성. creator_id (UUID)를 받음."""
     async with session_maker() as session:
-        user = await session.execute(select(User).where(User.email == creator_email))
-        user = user.scalar_one()
         cls = OneDayClass(
-            creator_id=user.id,
+            creator_id=creator_id,
             category="cat",
             location="loc",
             start_time="2025-12-20 ~ 2025-12-21",
@@ -89,9 +89,10 @@ async def create_class(session_maker, creator_email: str, creator_type: UserType
 
 @pytest.mark.anyio
 async def test_only_young_can_enroll(client: AsyncClient, session_maker):
-    clazz = await create_class(session_maker, "old@example.com", UserType.OLD)
-    await create_user(session_maker, "Young", "young@example.com", UserType.YOUNG)
-    await create_user(session_maker, "OldUser", "olduser@example.com", UserType.OLD)
+    old_user_id = await create_user(session_maker, "Creator", "old@example.com", UserType.OLD)
+    clazz = await create_class(session_maker, old_user_id)
+    young_user_id = await create_user(session_maker, "Young", "young@example.com", UserType.YOUNG)
+    olduser_id = await create_user(session_maker, "OldUser", "olduser@example.com", UserType.OLD)
 
     payload = {"applied_date": "2025-12-19", "headcount": 2}
 
@@ -99,7 +100,7 @@ async def test_only_young_can_enroll(client: AsyncClient, session_maker):
     res = await client.post(
         f"/api/v1/classes/{clazz.id}/enroll",
         json=payload,
-        headers={"wadeulwadeul-user": "olduser@example.com"},
+        headers={"wadeulwadeul-user": str(olduser_id)},
     )
     assert res.status_code == 403
 
@@ -107,27 +108,28 @@ async def test_only_young_can_enroll(client: AsyncClient, session_maker):
     res = await client.post(
         f"/api/v1/classes/{clazz.id}/enroll",
         json=payload,
-        headers={"wadeulwadeul-user": "young@example.com"},
+        headers={"wadeulwadeul-user": str(young_user_id)},
     )
     assert res.status_code == 201
 
 
 @pytest.mark.anyio
 async def test_list_my_enrollments(client: AsyncClient, session_maker):
-    clazz = await create_class(session_maker, "old@example.com", UserType.OLD)
-    await create_user(session_maker, "Young", "young@example.com", UserType.YOUNG)
+    old_user_id = await create_user(session_maker, "Creator", "old@example.com", UserType.OLD)
+    clazz = await create_class(session_maker, old_user_id)
+    young_user_id = await create_user(session_maker, "Young", "young@example.com", UserType.YOUNG)
 
     payload = {"applied_date": "2025-12-19", "headcount": 1}
     res = await client.post(
         f"/api/v1/classes/{clazz.id}/enroll",
         json=payload,
-        headers={"wadeulwadeul-user": "young@example.com"},
+        headers={"wadeulwadeul-user": str(young_user_id)},
     )
     assert res.status_code == 201
 
     res = await client.get(
         "/api/v1/classes/enrollments/me",
-        headers={"wadeulwadeul-user": "young@example.com"},
+        headers={"wadeulwadeul-user": str(young_user_id)},
     )
     assert res.status_code == 200
     data = res.json()
@@ -137,50 +139,53 @@ async def test_list_my_enrollments(client: AsyncClient, session_maker):
 
 @pytest.mark.anyio
 async def test_enroll_requires_fields(client: AsyncClient, session_maker):
-    clazz = await create_class(session_maker, "old@example.com", UserType.OLD)
-    await create_user(session_maker, "Young", "young@example.com", UserType.YOUNG)
+    old_user_id = await create_user(session_maker, "Creator", "old@example.com", UserType.OLD)
+    clazz = await create_class(session_maker, old_user_id)
+    young_user_id = await create_user(session_maker, "Young", "young@example.com", UserType.YOUNG)
 
     payload = {"headcount": 2}  # applied_date missing
     res = await client.post(
         f"/api/v1/classes/{clazz.id}/enroll",
         json=payload,
-        headers={"wadeulwadeul-user": "young@example.com"},
+        headers={"wadeulwadeul-user": str(young_user_id)},
     )
     assert res.status_code == 422
 
 
 @pytest.mark.anyio
 async def test_duplicate_enroll_blocked(client: AsyncClient, session_maker):
-    clazz = await create_class(session_maker, "old@example.com", UserType.OLD)
-    await create_user(session_maker, "Young", "young@example.com", UserType.YOUNG)
+    old_user_id = await create_user(session_maker, "Creator", "old@example.com", UserType.OLD)
+    clazz = await create_class(session_maker, old_user_id)
+    young_user_id = await create_user(session_maker, "Young", "young@example.com", UserType.YOUNG)
 
     payload = {"applied_date": "2025-12-19", "headcount": 1}
     res = await client.post(
         f"/api/v1/classes/{clazz.id}/enroll",
         json=payload,
-        headers={"wadeulwadeul-user": "young@example.com"},
+        headers={"wadeulwadeul-user": str(young_user_id)},
     )
     assert res.status_code == 201
 
     res_dup = await client.post(
         f"/api/v1/classes/{clazz.id}/enroll",
         json=payload,
-        headers={"wadeulwadeul-user": "young@example.com"},
+        headers={"wadeulwadeul-user": str(young_user_id)},
     )
     assert res_dup.status_code == 400
 
 
 @pytest.mark.anyio
 async def test_delete_enrollment(client: AsyncClient, session_maker):
-    clazz = await create_class(session_maker, "old@example.com", UserType.OLD)
-    await create_user(session_maker, "Young", "young@example.com", UserType.YOUNG)
-    await create_user(session_maker, "Other", "other@example.com", UserType.YOUNG)
+    old_user_id = await create_user(session_maker, "Creator", "old@example.com", UserType.OLD)
+    clazz = await create_class(session_maker, old_user_id)
+    young_user_id = await create_user(session_maker, "Young", "young@example.com", UserType.YOUNG)
+    other_user_id = await create_user(session_maker, "Other", "other@example.com", UserType.YOUNG)
 
     payload = {"applied_date": "2025-12-19", "headcount": 1}
     res = await client.post(
         f"/api/v1/classes/{clazz.id}/enroll",
         json=payload,
-        headers={"wadeulwadeul-user": "young@example.com"},
+        headers={"wadeulwadeul-user": str(young_user_id)},
     )
     assert res.status_code == 201
     enrollment_id = res.json()["id"]
@@ -188,21 +193,21 @@ async def test_delete_enrollment(client: AsyncClient, session_maker):
     # 다른 사용자 삭제 불가
     res_forbidden = await client.delete(
         f"/api/v1/classes/enrollments/{enrollment_id}",
-        headers={"wadeulwadeul-user": "other@example.com"},
+        headers={"wadeulwadeul-user": str(other_user_id)},
     )
     assert res_forbidden.status_code == 403
 
     # 본인 삭제 가능
     res_delete = await client.delete(
         f"/api/v1/classes/enrollments/{enrollment_id}",
-        headers={"wadeulwadeul-user": "young@example.com"},
+        headers={"wadeulwadeul-user": str(young_user_id)},
     )
     assert res_delete.status_code == 204
 
     # 삭제 후 목록 비어 있음
     res_list = await client.get(
         "/api/v1/classes/enrollments/me",
-        headers={"wadeulwadeul-user": "young@example.com"},
+        headers={"wadeulwadeul-user": str(young_user_id)},
     )
     assert res_list.status_code == 200
     assert res_list.json() == []

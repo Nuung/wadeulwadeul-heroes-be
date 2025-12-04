@@ -1,8 +1,9 @@
 """Tests for OLD users viewing enrollments in their classes."""
 
+from uuid import UUID
+
 import pytest
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.core import auth as auth_module
@@ -61,26 +62,25 @@ async def client(session_maker):
     app.dependency_overrides.clear()
 
 
-async def create_user(session_maker, name: str, email: str, user_type: UserType) -> User:
-    """테스트용 사용자 생성."""
+async def create_user(session_maker, name: str, email: str, user_type: UserType) -> UUID:
+    """테스트용 사용자 생성. UUID를 반환."""
     async with session_maker() as session:
         user = User(name=name, email=email, type=user_type)
         session.add(user)
-        await session.commit()
+        await session.flush()
         await session.refresh(user)
-        return user
+        user_id = user.id
+        await session.commit()
+        return user_id
 
 
 async def create_class_for_user(
-    session_maker, creator_email: str, category: str, location: str
+    session_maker, creator_id: UUID, category: str, location: str
 ) -> OneDayClass:
-    """특정 사용자의 클래스 생성."""
+    """특정 사용자의 클래스 생성. creator_id (UUID)를 받음."""
     async with session_maker() as session:
-        user_result = await session.execute(select(User).where(User.email == creator_email))
-        user = user_result.scalar_one()
-
         cls = OneDayClass(
-            creator_id=user.id,
+            creator_id=creator_id,
             category=category,
             location=location,
             start_time="2025-12-20 10:00",
@@ -95,16 +95,13 @@ async def create_class_for_user(
 
 
 async def enroll_user_to_class(
-    session_maker, user_email: str, class_id, applied_date: str, headcount: int
+    session_maker, user_id: UUID, class_id, applied_date: str, headcount: int
 ) -> Enrollment:
-    """사용자를 클래스에 등록."""
+    """사용자를 클래스에 등록. user_id (UUID)를 받음."""
     async with session_maker() as session:
-        user_result = await session.execute(select(User).where(User.email == user_email))
-        user = user_result.scalar_one()
-
         enrollment = Enrollment(
             class_id=class_id,
-            user_id=user.id,
+            user_id=user_id,
             applied_date=applied_date,
             headcount=headcount,
         )
@@ -118,29 +115,29 @@ async def enroll_user_to_class(
 async def test_old_user_can_view_their_class_enrollments(client: AsyncClient, session_maker):
     """OLD 사용자가 자신의 클래스 신청자 목록 조회 성공."""
     # OLD 사용자 생성
-    await create_user(session_maker, "Old User", "old@example.com", UserType.OLD)
+    old_user_id = await create_user(session_maker, "Old User", "old@example.com", UserType.OLD)
 
     # YOUNG 사용자 2명 생성
-    await create_user(session_maker, "Young1", "young1@example.com", UserType.YOUNG)
-    await create_user(session_maker, "Young2", "young2@example.com", UserType.YOUNG)
+    young1_id = await create_user(session_maker, "Young1", "young1@example.com", UserType.YOUNG)
+    young2_id = await create_user(session_maker, "Young2", "young2@example.com", UserType.YOUNG)
 
     # OLD 사용자가 2개의 클래스 생성
     class1 = await create_class_for_user(
-        session_maker, "old@example.com", "cooking", "Seoul"
+        session_maker, old_user_id, "cooking", "Seoul"
     )
     class2 = await create_class_for_user(
-        session_maker, "old@example.com", "painting", "Busan"
+        session_maker, old_user_id, "painting", "Busan"
     )
 
     # 각 클래스에 YOUNG 사용자들이 신청
-    await enroll_user_to_class(session_maker, "young1@example.com", class1.id, "2025-12-19", 2)
-    await enroll_user_to_class(session_maker, "young2@example.com", class1.id, "2025-12-19", 1)
-    await enroll_user_to_class(session_maker, "young1@example.com", class2.id, "2025-12-18", 3)
+    await enroll_user_to_class(session_maker, young1_id, class1.id, "2025-12-19", 2)
+    await enroll_user_to_class(session_maker, young2_id, class1.id, "2025-12-19", 1)
+    await enroll_user_to_class(session_maker, young1_id, class2.id, "2025-12-18", 3)
 
     # OLD 사용자로 엔드포인트 호출
     res = await client.get(
         "/api/v1/classes/my-classes/enrollments",
-        headers={"wadeulwadeul-user": "old@example.com"},
+        headers={"wadeulwadeul-user": str(old_user_id)},
     )
 
     # 검증
@@ -177,11 +174,11 @@ async def test_old_user_can_view_their_class_enrollments(client: AsyncClient, se
 @pytest.mark.anyio
 async def test_young_user_cannot_access_endpoint(client: AsyncClient, session_maker):
     """YOUNG 사용자는 접근 불가."""
-    await create_user(session_maker, "Young", "young@example.com", UserType.YOUNG)
+    young_user_id = await create_user(session_maker, "Young", "young@example.com", UserType.YOUNG)
 
     res = await client.get(
         "/api/v1/classes/my-classes/enrollments",
-        headers={"wadeulwadeul-user": "young@example.com"},
+        headers={"wadeulwadeul-user": str(young_user_id)},
     )
 
     assert res.status_code == 403
@@ -199,14 +196,14 @@ async def test_unauthenticated_user_cannot_access(client: AsyncClient):
 @pytest.mark.anyio
 async def test_old_user_sees_classes_with_no_enrollments(client: AsyncClient, session_maker):
     """신청자가 없는 클래스도 반환."""
-    await create_user(session_maker, "Old User", "old@example.com", UserType.OLD)
+    old_user_id = await create_user(session_maker, "Old User", "old@example.com", UserType.OLD)
 
     # 클래스 생성하지만 아무도 신청하지 않음
-    await create_class_for_user(session_maker, "old@example.com", "pottery", "Incheon")
+    await create_class_for_user(session_maker, old_user_id, "pottery", "Incheon")
 
     res = await client.get(
         "/api/v1/classes/my-classes/enrollments",
-        headers={"wadeulwadeul-user": "old@example.com"},
+        headers={"wadeulwadeul-user": str(old_user_id)},
     )
 
     assert res.status_code == 200
@@ -220,22 +217,22 @@ async def test_old_user_sees_classes_with_no_enrollments(client: AsyncClient, se
 async def test_old_user_only_sees_their_own_classes(client: AsyncClient, session_maker):
     """다른 OLD 사용자의 클래스는 반환하지 않음."""
     # OLD 사용자 2명 생성
-    await create_user(session_maker, "Old1", "old1@example.com", UserType.OLD)
-    await create_user(session_maker, "Old2", "old2@example.com", UserType.OLD)
-    await create_user(session_maker, "Young", "young@example.com", UserType.YOUNG)
+    old1_id = await create_user(session_maker, "Old1", "old1@example.com", UserType.OLD)
+    old2_id = await create_user(session_maker, "Old2", "old2@example.com", UserType.OLD)
+    young_id = await create_user(session_maker, "Young", "young@example.com", UserType.YOUNG)
 
     # old1이 클래스 생성
-    class1 = await create_class_for_user(session_maker, "old1@example.com", "yoga", "Seoul")
+    class1 = await create_class_for_user(session_maker, old1_id, "yoga", "Seoul")
     # old2가 클래스 생성
-    await create_class_for_user(session_maker, "old2@example.com", "pilates", "Busan")
+    await create_class_for_user(session_maker, old2_id, "pilates", "Busan")
 
     # YOUNG이 old1의 클래스에 신청
-    await enroll_user_to_class(session_maker, "young@example.com", class1.id, "2025-12-19", 1)
+    await enroll_user_to_class(session_maker, young_id, class1.id, "2025-12-19", 1)
 
     # old1로 조회
     res = await client.get(
         "/api/v1/classes/my-classes/enrollments",
-        headers={"wadeulwadeul-user": "old1@example.com"},
+        headers={"wadeulwadeul-user": str(old1_id)},
     )
 
     assert res.status_code == 200

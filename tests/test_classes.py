@@ -60,18 +60,22 @@ async def client(session_maker):
     app.dependency_overrides.clear()
 
 
-async def create_user(session_maker, name: str, email: str, user_type: UserType) -> None:
-    """테스트용 사용자 생성."""
+async def create_user(session_maker, name: str, email: str, user_type: UserType) -> UUID:
+    """테스트용 사용자 생성. UUID를 반환."""
     async with session_maker() as session:
         user = User(name=name, email=email, type=user_type)
         session.add(user)
+        await session.flush()
+        await session.refresh(user)
+        user_id = user.id
         await session.commit()
+        return user_id
 
 
 @pytest.mark.anyio
 async def test_only_old_user_can_create_class(client: AsyncClient, session_maker):
-    await create_user(session_maker, "Old User", "old@example.com", UserType.OLD)
-    await create_user(session_maker, "Young User", "young@example.com", UserType.YOUNG)
+    old_user_id = await create_user(session_maker, "Old User", "old@example.com", UserType.OLD)
+    young_user_id = await create_user(session_maker, "Young User", "young@example.com", UserType.YOUNG)
 
     payload = {
         "category": "cooking",
@@ -86,7 +90,7 @@ async def test_only_old_user_can_create_class(client: AsyncClient, session_maker
     res = await client.post(
         "/api/v1/classes",
         json=payload,
-        headers={"wadeulwadeul-user": "young@example.com"},
+        headers={"wadeulwadeul-user": str(young_user_id)},
     )
     assert res.status_code == 403
 
@@ -94,14 +98,14 @@ async def test_only_old_user_can_create_class(client: AsyncClient, session_maker
     res = await client.post(
         "/api/v1/classes",
         json=payload,
-        headers={"wadeulwadeul-user": "old@example.com"},
+        headers={"wadeulwadeul-user": str(old_user_id)},
     )
     assert res.status_code == 201
 
 
 @pytest.mark.anyio
 async def test_create_class_requires_fields(client: AsyncClient, session_maker):
-    await create_user(session_maker, "Old User", "old@example.com", UserType.OLD)
+    old_user_id = await create_user(session_maker, "Old User", "old@example.com", UserType.OLD)
 
     payload = {
         # "category" missing
@@ -114,7 +118,7 @@ async def test_create_class_requires_fields(client: AsyncClient, session_maker):
     res = await client.post(
         "/api/v1/classes",
         json=payload,
-        headers={"wadeulwadeul-user": "old@example.com"},
+        headers={"wadeulwadeul-user": str(old_user_id)},
     )
 
     assert res.status_code == 422
@@ -122,7 +126,7 @@ async def test_create_class_requires_fields(client: AsyncClient, session_maker):
 
 @pytest.mark.anyio
 async def test_create_class_persists_and_returned(client: AsyncClient, session_maker):
-    await create_user(session_maker, "Old User", "old@example.com", UserType.OLD)
+    old_user_id = await create_user(session_maker, "Old User", "old@example.com", UserType.OLD)
 
     payload = {
         "category": "music",
@@ -136,7 +140,7 @@ async def test_create_class_persists_and_returned(client: AsyncClient, session_m
     res = await client.post(
         "/api/v1/classes",
         json=payload,
-        headers={"wadeulwadeul-user": "old@example.com"},
+        headers={"wadeulwadeul-user": str(old_user_id)},
     )
 
     assert res.status_code == 201
@@ -158,7 +162,7 @@ async def test_create_class_persists_and_returned(client: AsyncClient, session_m
 
 @pytest.mark.anyio
 async def test_get_class_by_id(client: AsyncClient, session_maker):
-    await create_user(session_maker, "Old User", "old@example.com", UserType.OLD)
+    old_user_id = await create_user(session_maker, "Old User", "old@example.com", UserType.OLD)
 
     payload = {
         "category": "baking",
@@ -172,14 +176,14 @@ async def test_get_class_by_id(client: AsyncClient, session_maker):
     create_res = await client.post(
         "/api/v1/classes",
         json=payload,
-        headers={"wadeulwadeul-user": "old@example.com"},
+        headers={"wadeulwadeul-user": str(old_user_id)},
     )
     assert create_res.status_code == 201
     class_id = create_res.json()["id"]
 
     get_res = await client.get(
         f"/api/v1/classes/{class_id}",
-        headers={"wadeulwadeul-user": "old@example.com"},
+        headers={"wadeulwadeul-user": str(old_user_id)},
     )
 
     assert get_res.status_code == 200
@@ -190,7 +194,7 @@ async def test_get_class_by_id(client: AsyncClient, session_maker):
 
 @pytest.mark.anyio
 async def test_list_classes(client: AsyncClient, session_maker):
-    await create_user(session_maker, "Old User", "old@example.com", UserType.OLD)
+    old_user_id = await create_user(session_maker, "Old User", "old@example.com", UserType.OLD)
 
     payloads = [
         {
@@ -215,13 +219,13 @@ async def test_list_classes(client: AsyncClient, session_maker):
         res = await client.post(
             "/api/v1/classes",
             json=payload,
-            headers={"wadeulwadeul-user": "old@example.com"},
+            headers={"wadeulwadeul-user": str(old_user_id)},
         )
         assert res.status_code == 201
 
     res = await client.get(
         "/api/v1/classes?skip=0&limit=10",
-        headers={"wadeulwadeul-user": "old@example.com"},
+        headers={"wadeulwadeul-user": str(old_user_id)},
     )
     assert res.status_code == 200
     data = res.json()
@@ -230,7 +234,7 @@ async def test_list_classes(client: AsyncClient, session_maker):
 
 @pytest.mark.anyio
 async def test_public_list_classes_with_pagination(client: AsyncClient, session_maker):
-    await create_user(session_maker, "Old User", "old@example.com", UserType.OLD)
+    old_user_id = await create_user(session_maker, "Old User", "old@example.com", UserType.OLD)
 
     for idx in range(3):
         payload = {
@@ -244,7 +248,7 @@ async def test_public_list_classes_with_pagination(client: AsyncClient, session_
         res = await client.post(
             "/api/v1/classes",
             json=payload,
-            headers={"wadeulwadeul-user": "old@example.com"},
+            headers={"wadeulwadeul-user": str(old_user_id)},
         )
         assert res.status_code == 201
 
@@ -262,8 +266,8 @@ async def test_public_list_classes_with_pagination(client: AsyncClient, session_
 
 @pytest.mark.anyio
 async def test_update_class_by_creator(client: AsyncClient, session_maker):
-    await create_user(session_maker, "Old User", "old@example.com", UserType.OLD)
-    await create_user(session_maker, "Young User", "young@example.com", UserType.YOUNG)
+    old_user_id = await create_user(session_maker, "Old User", "old@example.com", UserType.OLD)
+    young_user_id = await create_user(session_maker, "Young User", "young@example.com", UserType.YOUNG)
 
     payload = {
         "category": "dance",
@@ -277,7 +281,7 @@ async def test_update_class_by_creator(client: AsyncClient, session_maker):
     create_res = await client.post(
         "/api/v1/classes",
         json=payload,
-        headers={"wadeulwadeul-user": "old@example.com"},
+        headers={"wadeulwadeul-user": str(old_user_id)},
     )
     assert create_res.status_code == 201
     class_id = create_res.json()["id"]
@@ -288,7 +292,7 @@ async def test_update_class_by_creator(client: AsyncClient, session_maker):
     res = await client.put(
         f"/api/v1/classes/{class_id}",
         json=update_payload,
-        headers={"wadeulwadeul-user": "young@example.com"},
+        headers={"wadeulwadeul-user": str(young_user_id)},
     )
     assert res.status_code == 403
 
@@ -296,7 +300,7 @@ async def test_update_class_by_creator(client: AsyncClient, session_maker):
     res = await client.put(
         f"/api/v1/classes/{class_id}",
         json=update_payload,
-        headers={"wadeulwadeul-user": "old@example.com"},
+        headers={"wadeulwadeul-user": str(old_user_id)},
     )
     assert res.status_code == 200
     data = res.json()
@@ -306,8 +310,8 @@ async def test_update_class_by_creator(client: AsyncClient, session_maker):
 
 @pytest.mark.anyio
 async def test_delete_class_by_creator(client: AsyncClient, session_maker):
-    await create_user(session_maker, "Old User", "old@example.com", UserType.OLD)
-    await create_user(session_maker, "Young User", "young@example.com", UserType.YOUNG)
+    old_user_id = await create_user(session_maker, "Old User", "old@example.com", UserType.OLD)
+    young_user_id = await create_user(session_maker, "Young User", "young@example.com", UserType.YOUNG)
 
     payload = {
         "category": "craft",
@@ -321,7 +325,7 @@ async def test_delete_class_by_creator(client: AsyncClient, session_maker):
     create_res = await client.post(
         "/api/v1/classes",
         json=payload,
-        headers={"wadeulwadeul-user": "old@example.com"},
+        headers={"wadeulwadeul-user": str(old_user_id)},
     )
     assert create_res.status_code == 201
     class_id = create_res.json()["id"]
@@ -329,20 +333,20 @@ async def test_delete_class_by_creator(client: AsyncClient, session_maker):
     # Young 사용자: 삭제 불가
     res = await client.delete(
         f"/api/v1/classes/{class_id}",
-        headers={"wadeulwadeul-user": "young@example.com"},
+        headers={"wadeulwadeul-user": str(young_user_id)},
     )
     assert res.status_code == 403
 
     # Creator(OLD): 삭제 가능
     res = await client.delete(
         f"/api/v1/classes/{class_id}",
-        headers={"wadeulwadeul-user": "old@example.com"},
+        headers={"wadeulwadeul-user": str(old_user_id)},
     )
     assert res.status_code == 204
 
     # 이후 조회 시 404
     res = await client.get(
         f"/api/v1/classes/{class_id}",
-        headers={"wadeulwadeul-user": "old@example.com"},
+        headers={"wadeulwadeul-user": str(old_user_id)},
     )
     assert res.status_code == 404
