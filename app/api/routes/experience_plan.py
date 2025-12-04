@@ -34,19 +34,13 @@ class ExperienceRequest(BaseModel):
     price_per_person: str = Field(..., description="1인당 요금")
 
 
-class ExperienceResponse(BaseModel):
-    """Response for experience plan generation."""
-
-    template: dict[str, Any] = Field(..., description="체험 클래스 전체 템플릿(JSON)")
-
-
 @router.post("/", status_code=status.HTTP_200_OK)
 async def generate_experience_plan(
     payload: ExperienceRequest,
     _current_user: User | None = Depends(get_current_user_optional),
     db: AsyncSession = Depends(get_db),
     openai_client: AsyncOpenAI = Depends(get_openai_client),
-) -> ExperienceResponse:
+) -> dict[str, Any]:
     """
     OpenAI GPT API를 호출하여 체험 클래스 템플릿 생성.
 
@@ -96,7 +90,7 @@ async def generate_experience_plan(
             detail="LLM 응답을 JSON으로 파싱할 수 없습니다",
         ) from exc
 
-    return ExperienceResponse(template=template)
+    return template
 
 
 class MaterialsSuggestionRequest(BaseModel):
