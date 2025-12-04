@@ -1,34 +1,15 @@
--- DROP SCHEMA IF EXISTS app CASCADE;
--- DROP SCHEMA IF EXISTS audit CASCADE;
--- DROP FUNCTION IF EXISTS app.update_updated_at_column();
--- PostgreSQL initialization script for Wadeulwadeul Heroes
--- This script runs only once when the database is first created
+-- PostgreSQL initialization script aligned with application models
+-- Runs once when the database is first created
 
--- Create additional database if needed
--- CREATE DATABASE wadeulwadeul_dev;
-
--- Create extensions
+-- Extensions for UUID generation
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
--- Create schemas
+-- Schema for application tables
 CREATE SCHEMA IF NOT EXISTS app;
-CREATE SCHEMA IF NOT EXISTS audit;
-
--- Grant permissions
 GRANT ALL PRIVILEGES ON SCHEMA app TO postgres;
-GRANT ALL PRIVILEGES ON SCHEMA audit TO postgres;
 
--- Create function to update updated_at timestamp
-CREATE OR REPLACE FUNCTION app.update_updated_at_column()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.updated_at = CURRENT_TIMESTAMP;
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
--- Create heroes table
+-- Heroes table
 CREATE TABLE IF NOT EXISTS app.heroes (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(255) NOT NULL,
@@ -37,8 +18,10 @@ CREATE TABLE IF NOT EXISTS app.heroes (
     created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+CREATE INDEX IF NOT EXISTS idx_heroes_name ON app.heroes(name);
+CREATE INDEX IF NOT EXISTS idx_heroes_level ON app.heroes(level);
 
--- Create users table
+-- Users table
 CREATE TABLE IF NOT EXISTS app.users (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(255) NOT NULL,
@@ -47,8 +30,10 @@ CREATE TABLE IF NOT EXISTS app.users (
     created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+CREATE INDEX IF NOT EXISTS idx_users_name ON app.users(name);
+CREATE INDEX IF NOT EXISTS idx_users_type ON app.users(type);
 
--- Create one-day classes table
+-- One-day classes table
 CREATE TABLE IF NOT EXISTS app.classes (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     creator_id UUID NOT NULL,
@@ -62,7 +47,7 @@ CREATE TABLE IF NOT EXISTS app.classes (
     updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- Create enrollments table
+-- Enrollments table
 CREATE TABLE IF NOT EXISTS app.enrollments (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     class_id UUID NOT NULL,
@@ -71,69 +56,9 @@ CREATE TABLE IF NOT EXISTS app.enrollments (
     headcount INT NOT NULL
 );
 
--- Create audit log table
-CREATE TABLE IF NOT EXISTS audit.logs (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    table_name VARCHAR(255) NOT NULL,
-    operation VARCHAR(50) NOT NULL,
-    old_data JSONB,
-    new_data JSONB,
-    changed_by VARCHAR(255),
-    changed_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-
--- Create indexes
-CREATE INDEX IF NOT EXISTS idx_heroes_name ON app.heroes(name);
-CREATE INDEX IF NOT EXISTS idx_heroes_level ON app.heroes(level);
-CREATE INDEX IF NOT EXISTS idx_users_email ON app.users(email);
-CREATE INDEX IF NOT EXISTS idx_users_name ON app.users(name);
-CREATE INDEX IF NOT EXISTS idx_users_type ON app.users(type);
-CREATE INDEX IF NOT EXISTS idx_classes_category ON app.classes(category);
-CREATE INDEX IF NOT EXISTS idx_classes_start_time ON app.classes(start_time);
-CREATE INDEX IF NOT EXISTS idx_classes_creator ON app.classes(creator_id);
-CREATE INDEX IF NOT EXISTS idx_enrollments_user ON app.enrollments(user_id);
-CREATE UNIQUE INDEX IF NOT EXISTS uq_enrollments_class_user ON app.enrollments(class_id, user_id);
-CREATE INDEX IF NOT EXISTS idx_audit_logs_table ON audit.logs(table_name);
-CREATE INDEX IF NOT EXISTS idx_audit_logs_changed_at ON audit.logs(changed_at);
-
--- Create triggers for updated_at
-DROP TRIGGER IF EXISTS update_heroes_updated_at ON app.heroes;
-CREATE TRIGGER update_heroes_updated_at
-    BEFORE UPDATE ON app.heroes
-    FOR EACH ROW
-    EXECUTE FUNCTION app.update_updated_at_column();
-
-DROP TRIGGER IF EXISTS update_users_updated_at ON app.users;
-CREATE TRIGGER update_users_updated_at
-    BEFORE UPDATE ON app.users
-    FOR EACH ROW
-    EXECUTE FUNCTION app.update_updated_at_column();
-
-DROP TRIGGER IF EXISTS update_classes_updated_at ON app.classes;
-CREATE TRIGGER update_classes_updated_at
-    BEFORE UPDATE ON app.classes
-    FOR EACH ROW
-    EXECUTE FUNCTION app.update_updated_at_column();
-
--- Insert sample data (optional)
+-- Seed data for heroes (optional)
 INSERT INTO app.heroes (name, description, level) VALUES
     ('Hero Alpha', 'The first hero', 1),
     ('Hero Beta', 'The second hero', 2),
     ('Hero Gamma', 'The third hero', 3)
 ON CONFLICT DO NOTHING;
-
--- Create read-only user (optional, for reporting)
--- CREATE USER readonly_user WITH PASSWORD 'readonly123';
--- GRANT CONNECT ON DATABASE wadeulwadeul_db TO readonly_user;
--- GRANT USAGE ON SCHEMA app TO readonly_user;
--- GRANT SELECT ON ALL TABLES IN SCHEMA app TO readonly_user;
--- ALTER DEFAULT PRIVILEGES IN SCHEMA app GRANT SELECT ON TABLES TO readonly_user;
-
-COMMENT ON TABLE app.heroes IS 'Main heroes table for the application';
-COMMENT ON TABLE audit.logs IS 'Audit log table for tracking changes';
-
--- Print success message
-DO $$
-BEGIN
-    RAISE NOTICE 'Database initialization completed successfully!';
-END $$;

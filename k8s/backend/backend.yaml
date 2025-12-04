@@ -24,34 +24,6 @@ spec:
         app: backend
         version: "v1"
     spec:
-      # Run migrations before starting the app
-      initContainers:
-      - name: run-migrations
-        image: 837126493345.dkr.ecr.ap-northeast-2.amazonaws.com/goormthon-5/backend:build-19
-        command: ["alembic", "upgrade", "head"]
-        envFrom:
-        - configMapRef:
-            name: backend-config
-        env:
-        - name: DB_HOST
-          value: "postgres.goormthon-5.svc.cluster.local"
-        - name: DB_PORT
-          value: "5432"
-        - name: DB_USER
-          value: "postgres"
-        - name: DB_PASSWORD
-          value: "postgres123"
-        - name: DB_NAME
-          value: "wadeulwadeul_db"
-        - name: ENVIRONMENT
-          value: "production"
-        resources:
-          requests:
-            memory: "128Mi"
-            cpu: "100m"
-          limits:
-            memory: "256Mi"
-            cpu: "200m"
       containers:
       - name: backend
         image: 837126493345.dkr.ecr.ap-northeast-2.amazonaws.com/goormthon-5/backend:build-37

@@ -12,6 +12,9 @@ class Settings(BaseSettings):
     debug: bool = False
     api_prefix: str = "/api/v1"
 
+    # Environment (local or production)
+    environment: str = "local"
+
     # API documentation settings
     enable_docs: bool = True
     docs_url: str = "/api/docs"
@@ -43,7 +46,6 @@ class Settings(BaseSettings):
 
         Reference: https://docs.sqlalchemy.org/en/20/orm/extensions/asyncio.html
         """
-<<<<<<< HEAD
         env = self.environment.lower()
 
         # Use SQLite for local development
@@ -53,12 +55,6 @@ class Settings(BaseSettings):
         if not self.db_host:
             raise ValueError("DB_HOST is required when ENVIRONMENT is production")
 
-=======
-        # Use SQLite for local development
-        if self.environment == "local" or not self.db_host:
-            return "sqlite+aiosqlite:///./wadeulwadeul_local.db"
-
->>>>>>> 0227a7c (chore: update goormthon-5/backend image to build-19)
         # Use PostgreSQL for production
         return f"postgresql+asyncpg://{self.db_user}:{self.db_password}@{self.db_host}:{self.db_port}/{self.db_name}"
 
