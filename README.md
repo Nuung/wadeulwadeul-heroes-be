@@ -27,6 +27,28 @@ scripts/ci-checks.sh
 Dockerfile, plan.md, AGENTS.md, pyproject.toml
 ```
 
+## RAG 파이프라인 아키텍처
+```mermaid
+flowchart TD
+    Start[API 요청] --> Query[쿼리 생성<br/>category + job + materials + location]
+    Query --> Cache{임베딩<br/>캐시?}
+    Cache -->|Hit| Vector[쿼리 벡터<br/>1536차원]
+    Cache -->|Miss| Embed[OpenAI Embedding API<br/>text-embedding-3-small]
+    Embed --> Vector
+
+    Vector --> FAISS[FAISS IndexFlatL2<br/>L2 거리 기반 검색<br/>top_k=3]
+    FAISS --> Meta[메타데이터 매칭<br/>visitjeju_metadata.json]
+    Meta --> Context[RAG 컨텍스트 구성<br/>title, introduction, alltag, address]
+    Context --> Prompt[프롬프트 주입<br/>reference_context 블록]
+    Prompt --> GPT[GPT-4o 호출<br/>temperature=0, JSON mode]
+    GPT --> Response[체험 계획 JSON 생성]
+```
+
+**핵심 기술 포인트:**
+- **임베딩 캐시**: 자주 사용되는 쿼리 임베딩을 로컬 캐시하여 API 호출 최소화
+- **FAISS L2 검색**: visitjeju 데이터셋 기반 유사도 검색 (L2 distance)
+- **폴백 메커니즘**: RAG 실패 시 기본 프롬프트로 자동 전환
+
 ## 빠른 시작
 1) 요구 사항: Python 3.13, `uv`, `OPENAI_API_KEY`  
    - RAG을 쓰려면 `llm/output/visitjeju_faiss.index`, `llm/output/visitjeju_metadata.json`이 필요합니다. 없으면 기본 프롬프트로만 동작합니다.
